@@ -63,7 +63,7 @@
         <cxf.version>3.3.6</cxf.version>
 
         <org.wso2.carbon.utils.version>4.6.2</org.wso2.carbon.utils.version>
-        <identity.inbound.oauth.version>6.4.111</identity.inbound.oauth.version>
+        <identity.inbound.oauth.version>7.0.102</identity.inbound.oauth.version>
         <h2database.version>1.4.199</h2database.version>
         <powermock.version>1.6.6</powermock.version>
         <javaee.web.api.version>7.0</javaee.web.api.version>
@@ -109,6 +109,11 @@
         <osgi.framework.imp.pkg.version.range>[1.7.0, 2.0.0)</osgi.framework.imp.pkg.version.range>
         <identity.inbound.auth.oauth.imp.pkg.version.range>[6.2.0, 7.0.0)</identity.inbound.auth.oauth.imp.pkg.version.range>
         <carbon.kernel.package.import.version.range>[4.5.0, 5.0.0)</carbon.kernel.package.import.version.range>
+        <carbon.identity.framework.imp.pkg.version.range>[5.18.0, 6.0.0)</carbon.identity.framework.imp.pkg.version.range>
+        <carbon.user.api.imp.pkg.version.range>[4.6.0, 5.0.0)</carbon.user.api.imp.pkg.version.range>
+        <carbon.identity.inbound.auth.oauth.version.range>[6.2.0, 7.0.102)</carbon.identity.inbound.auth.oauth.version.range>
+        <commons-lang.wso2.osgi.version.range>[2.6.0, 3.0.0)</commons-lang.wso2.osgi.version.range>
+        <commons-logging.osgi.version.range>[1.2.0, 2.0.0)</commons-logging.osgi.version.range>
     </properties>
 
     <dependencyManagement>
@@ -121,6 +126,11 @@
             <dependency>
                 <groupId>org.wso2.carbon</groupId>
                 <artifactId>org.wso2.carbon.user.core</artifactId>
+                <version>${carbon.kernel.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon</groupId>
+                <artifactId>org.wso2.carbon.user.api</artifactId>
                 <version>${carbon.kernel.version}</version>
             </dependency>
             <dependency>
@@ -260,6 +270,11 @@
             <dependency>
                 <groupId>org.wso2.healthcare</groupId>
                 <artifactId>org.wso2.healthcare.apim.claim.mgt</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.wso2.healthcare</groupId>
+                <artifactId>org.wso2.healthcare.is.smart.auth</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
