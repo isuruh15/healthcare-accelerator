@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <!--
   ~ Copyright (c) 2024, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
   ~
@@ -16,47 +15,58 @@
   ~ specific language governing permissions and limitations
   ~ under the License.
   -->
-<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0"
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0 http://maven.apache.org/xsd/assembly-1.1.0.xsd">
+          xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+    <id>oh.is.accelerator</id>
+    <includeBaseDirectory>true</includeBaseDirectory>
+    <baseDirectory>wso2-hcis-accelerator-${project.version}</baseDirectory>
 
-    <id>bin</id>
     <formats>
         <format>zip</format>
     </formats>
-    <includeBaseDirectory>true</includeBaseDirectory>
-
     <fileSets>
         <fileSet>
-            <directory>${basedir}</directory>
-            <outputDirectory>/</outputDirectory>
+            <directory>target/dist/bin</directory>
+            <outputDirectory>bin</outputDirectory>
             <includes>
-                <include>README.md</include>
+                <include>**/*.sh</include>
+                <include>**/*.toml</include>
+                <include>wso2update_darwin</include>
+                <include>wso2update_linux</include>
+                <include>wso2update_windows.exe</include>
+            </includes>
+            <fileMode>755</fileMode>
+        </fileSet>
+        <fileSet>
+            <directory>target/dist/conf</directory>
+            <outputDirectory>conf</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>target/dist/carbon-home</directory>
+            <outputDirectory>carbon-home</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>target/dist/updates</directory>
+            <outputDirectory>updates</outputDirectory>
+            <includes>
+                <include>product.txt</include>
             </includes>
         </fileSet>
         <fileSet>
-            <directory>${basedir}/conf</directory>
-            <outputDirectory>/conf</outputDirectory>
+            <directory>target/dist</directory>
+            <outputDirectory>.</outputDirectory>
             <includes>
-                <include>**/*</include>
-            </includes>
-        </fileSet>
-        <fileSet>
-            <directory>${basedir}/resources</directory>
-            <outputDirectory>/resources</outputDirectory>
-            <includes>
-                <include>**/*</include>
+                <include>LICENSE.txt</include>
             </includes>
         </fileSet>
     </fileSets>
-
-    <dependencySets>
-        <dependencySet>
-            <outputDirectory>/dropins</outputDirectory>
-            <includes>
-                <include>org.wso2.healthcare:org.wso2.healthcare.is.smart.auth:jar</include>
-            </includes>
-        </dependencySet>
-    </dependencySets>
-
+    <files>
+        <file>
+            <source>target/dist/README.md</source>
+        </file>
+        <file>
+            <source>target/dist/version.txt</source>
+        </file>
+    </files>
 </assembly>
