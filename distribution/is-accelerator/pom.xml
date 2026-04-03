@@ -40,12 +40,7 @@
         </dependency>
         <dependency>
             <groupId>org.wso2.healthcare</groupId>
-            <artifactId>org.wso2.healthcare.apim.clientauth.jwt</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.wso2.healthcare</groupId>
-            <artifactId>org.wso2.healthcare.apim.tokenmgt</artifactId>
+            <artifactId>org.wso2.healthcare.is.tokenmgt</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
@@ -147,17 +142,9 @@
                                     <fileset dir="${basedir}/../../product-accelerators/is/components/org.wso2.healthcare.is.smart.auth/target">
                                         <include name="org.wso2.healthcare.is.smart.auth-${project.version}.jar"/>
                                     </fileset>
-                                    <!--Private key JWT auth Handler-->
-                                    <fileset dir="${basedir}/../../product-accelerators/apim/components/org.wso2.healthcare.apim.clientauth.jwt/target">
-                                        <include name="org.wso2.healthcare.apim.clientauth.jwt-${project.version}.jar"/>
-                                    </fileset>
-                                </copy>
-
-                                <!--Add Bundles to lib-->
-                                <copy todir="${product_home}/carbon-home/repository/components/lib">
-                                    <!--Custom Authorization Code Grant Handler-->
-                                    <fileset dir="${basedir}/../../product-accelerators/apim/components/org.wso2.healthcare.apim.tokenmgt/target">
-                                        <include name="org.wso2.healthcare.apim.tokenmgt-${project.version}.jar"/>
+                                    <!--IS Token Management - Custom Authorization Code Grant Handler-->
+                                    <fileset dir="${basedir}/../../product-accelerators/is/components/org.wso2.healthcare.is.tokenmgt/target">
+                                        <include name="org.wso2.healthcare.is.tokenmgt-${project.version}.jar"/>
                                     </fileset>
                                 </copy>
 

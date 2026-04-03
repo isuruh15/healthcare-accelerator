@@ -16,6 +16,13 @@ This distribution includes the following components:
   - Implements SMART launch context handling
   - Adds patient and practitioner context to token responses
   - Supports `launch/patient` and `launch/practitioner` scopes
+  - Provides user claim resolution utilities
+
+- **org.wso2.healthcare.is.tokenmgt**: Token management component with custom OAuth2 grant handlers
+  - Custom authorization code grant handler for SMART on FHIR
+  - Adds patient context to token responses based on user claims
+  - Compatible with WSO2 IS 7.2.0
+  - Supports configurable patient claim URI
 
 ### Configuration (`conf/`)
 
@@ -29,7 +36,7 @@ Additional resources, scripts, and documentation for deploying and configuring t
 
 ### Prerequisites
 
-- WSO2 Identity Server 6.0.0 or later (for on-premise deployment)
+- WSO2 Identity Server 7.2.0 or later (for on-premise deployment)
 - Asgardeo account (for SaaS deployment)
 - Java 11 or later
 
@@ -47,10 +54,10 @@ Additional resources, scripts, and documentation for deploying and configuring t
    ```
 
 3. **Configure user claims** (if not already configured):
-   - Log in to the IS Management Console
-   - Navigate to **Main > Identity > Claims > Add**
+   - Log in to the IS Console
+   - Navigate to **User Attributes & Stores > Attributes**
    - Add the following claims:
-     - Claim URI: `http://wso2.org/claims/patient`
+     - Claim URI: `http://wso2.org/claims/patientid`
      - Display Name: `Patient ID`
      - Description: `FHIR Patient Resource ID`
      - Mapped Attribute: `patientId` (or your user store attribute)
@@ -60,7 +67,21 @@ Additional resources, scripts, and documentation for deploying and configuring t
      - Description: `FHIR Practitioner Resource ID`
      - Mapped Attribute: `practitionerId` (or your user store attribute)
 
-4. **Start the Identity Server**:
+4. **Configure custom grant handler** (for token management component):
+   Add to `<IS_HOME>/repository/conf/deployment.toml`:
+   ```toml
+   [oauth.grant_type.authorization_code]
+   grant_handler = "org.wso2.healthcare.is.tokenmgt.handlers.HealthcareAuthorizationCodeGrantHandler"
+
+   # Optional: customize patient claim URI (default is http://wso2.org/claims/patientid)
+   [oauth]
+   patient_claim_uri = "http://wso2.org/claims/patientid"
+
+   # Configure allowed SMART scopes
+   allowed_scopes = ["openid", "fhirUser", "launch/patient", "patient/*.read"]
+   ```
+
+5. **Start the Identity Server**:
    ```bash
    cd <IS_HOME>/bin
    ./wso2server.sh
@@ -178,14 +199,24 @@ To remove the accelerator:
 2. **Remove the component JARs**:
    ```bash
    rm <IS_HOME>/repository/components/dropins/org.wso2.healthcare.is.smart.auth*.jar
+   rm <IS_HOME>/repository/components/dropins/org.wso2.healthcare.is.tokenmgt*.jar
    ```
 
 3. **Clean cached OSGi bundles** (optional but recommended):
    ```bash
    rm -rf <IS_HOME>/repository/components/plugins/org.wso2.healthcare.is.smart.auth*
+   rm -rf <IS_HOME>/repository/components/plugins/org.wso2.healthcare.is.tokenmgt*
    ```
 
-4. **Start the Identity Server**:
+4. **Remove custom grant handler configuration**:
+   Edit `<IS_HOME>/repository/conf/deployment.toml` and remove the custom grant handler configuration:
+   ```toml
+   # Remove these lines
+   [oauth.grant_type.authorization_code]
+   grant_handler = "org.wso2.healthcare.is.tokenmgt.handlers.HealthcareAuthorizationCodeGrantHandler"
+   ```
+
+5. **Start the Identity Server**:
    ```bash
    cd <IS_HOME>/bin
    ./wso2server.sh
