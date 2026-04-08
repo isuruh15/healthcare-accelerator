@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2026, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -69,6 +69,13 @@ public class HealthcareSmartAuthTokenResponseHandler implements AccessTokenRespo
                 String practitionerId = claimResolver.getUserClaimValue(Constants.DEFAULT_PRACTITIONER_ID_CLAIM_URI,
                         authorizedUser);
                 attributes.put(Constants.PRACTITIONER_ATTRIBUTE, practitionerId);
+            }
+            else if (launchScopes.contains(Constants.ENCOUNTER_LAUNCH_SCOPE)) {
+                // gets the encounter id claim's value;
+                // this value need to be resolved from EHR; for now, we are adding it as a user claim
+                String practitionerId = claimResolver.getUserClaimValue(Constants.DEFAULT_ENCOUNTER_ID_CLAIM_URI,
+                        authorizedUser);
+                attributes.put(Constants.ENCOUNTER_ATTRIBUTE, practitionerId);
             }
         } catch (AuthenticationFailedException e) {
             LOG.error("Unable to add patient context to the token response: Error occurred while retrieving claim " +

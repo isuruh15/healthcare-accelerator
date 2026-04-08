@@ -1,252 +1,168 @@
-# WSO2 Healthcare Identity Server Accelerator - Distribution
+# WSO2 Healthcare Identity Server Accelerator
 
-This distribution package contains the WSO2 Healthcare Identity Server Accelerator components, which provide healthcare-specific identity and access management capabilities for WSO2 Identity Server and Asgardeo.
-
-## Version
-
-**Version**: 2.0.0
+This distribution provides healthcare-specific identity and access management capabilities for WSO2 Identity Server, including SMART on FHIR authorization support.
 
 ## Contents
 
-This distribution includes the following components:
+```
+wso2-hcis-accelerator-<version>/
+├── bin/
+│   └── merge.sh                  # Installation script
+├── carbon-home/
+│   └── repository/components/    # OSGi bundles to deploy
+├── conf/
+│   └── config.toml               # Accelerator configuration
+└── resources/
+    └── repository/conf/
+        └── deployment.toml       # Reference deployment.toml with healthcare configs
+```
 
-### Components (`dropins/`)
+### OSGi Components
 
-- **org.wso2.healthcare.is.smart.auth**: SMART on FHIR authentication and authorization component
-  - Implements SMART launch context handling
-  - Adds patient and practitioner context to token responses
-  - Supports `launch/patient` and `launch/practitioner` scopes
-  - Provides user claim resolution utilities
+- **org.wso2.healthcare.is.smart.auth** — SMART on FHIR token response handler
+  - Adds launch context (`patient`, `practitioner`, `encounter`) to token responses
+  - Supports `launch/patient`, `launch/practitioner`, and `launch/encounter` scopes
+  - Resolves context values from user claims
 
-- **org.wso2.healthcare.is.tokenmgt**: Token management component with custom OAuth2 grant handlers
-  - Custom authorization code grant handler for SMART on FHIR
-  - Adds patient context to token responses based on user claims
-  - Compatible with WSO2 IS 7.2.0
-  - Supports configurable patient claim URI
+- **org.wso2.healthcare.is.tokenmgt** — Custom OAuth2 grant handler
+  - Extends the authorization code grant handler
+  - Enforces SMART on FHIR `offline_access` scope for refresh token issuance
 
-### Configuration (`conf/`)
+## Prerequisites
 
-Configuration files and templates for healthcare-specific Identity Server settings.
-
-### Resources (`resources/`)
-
-Additional resources, scripts, and documentation for deploying and configuring the accelerator.
+- WSO2 Identity Server 7.2.0
+- Java 11 or later
 
 ## Installation
 
-### Prerequisites
+1. Extract the accelerator ZIP.
 
-- WSO2 Identity Server 7.2.0 or later (for on-premise deployment)
-- Asgardeo account (for SaaS deployment)
-- Java 11 or later
-
-### For WSO2 Identity Server
-
-1. **Stop the Identity Server** (if running):
-   ```bash
-   cd <IS_HOME>/bin
-   ./wso2server.sh stop
-   ```
-
-2. **Deploy the components**:
-   ```bash
-   cp dropins/*.jar <IS_HOME>/repository/components/dropins/
-   ```
-
-3. **Configure user claims** (if not already configured):
-   - Log in to the IS Console
-   - Navigate to **User Attributes & Stores > Attributes**
-   - Add the following claims:
-     - Claim URI: `http://wso2.org/claims/patientid`
-     - Display Name: `Patient ID`
-     - Description: `FHIR Patient Resource ID`
-     - Mapped Attribute: `patientId` (or your user store attribute)
-
-     - Claim URI: `http://wso2.org/claims/practitioner`
-     - Display Name: `Practitioner ID`
-     - Description: `FHIR Practitioner Resource ID`
-     - Mapped Attribute: `practitionerId` (or your user store attribute)
-
-4. **Configure custom grant handler** (for token management component):
-   Add to `<IS_HOME>/repository/conf/deployment.toml`:
+2. Configure `conf/config.toml`:
    ```toml
-   [oauth.grant_type.authorization_code]
-   grant_handler = "org.wso2.healthcare.is.tokenmgt.handlers.HealthcareAuthorizationCodeGrantHandler"
-
-   # Optional: customize patient claim URI (default is http://wso2.org/claims/patientid)
-   [oauth]
-   patient_claim_uri = "http://wso2.org/claims/patientid"
-
-   # Configure allowed SMART scopes
-   allowed_scopes = ["openid", "fhirUser", "launch/patient", "patient/*.read"]
+   # Enable or disable SMART on FHIR features
+   enable_smart_on_fhir = true
    ```
 
-5. **Start the Identity Server**:
+3. Run the merge script against your IS installation:
+   ```bash
+   cd wso2-hcis-accelerator-<version>
+   sh bin/merge.sh <IS_HOME>
+   ```
+   If `<IS_HOME>` is omitted, the script assumes the IS installation is the parent directory of the accelerator.
+
+   The script will:
+   - Copy OSGi bundles to `<IS_HOME>/repository/components/`
+   - Append healthcare-specific configurations to `<IS_HOME>/repository/conf/deployment.toml`
+   - Back up the original `deployment.toml` to `<IS_HOME>/hc-accelerator/backup/conf/`
+   - Log the merge operation to `<IS_HOME>/hc-accelerator/merge_audit.log`
+
+4. Configure user claims in IS for each user:
+   - `http://wso2.org/claims/patient` — FHIR Patient resource ID
+   - `http://wso2.org/claims/practitioner` — FHIR Practitioner resource ID
+   - `http://wso2.org/claims/encounter` — FHIR Encounter resource ID (resolved from user claim)
+
+5. Start WSO2 IS:
    ```bash
    cd <IS_HOME>/bin
-   ./wso2server.sh
+   sh wso2server.sh
    ```
 
-### For Asgardeo
+## Configuration Applied to deployment.toml
 
-1. **Package the component** as per Asgardeo extension guidelines
-2. **Upload** the extension through the Asgardeo console
-3. **Configure** the required claims in Asgardeo user attributes
+When `enable_smart_on_fhir = true`, the merge script appends the following to `deployment.toml`:
 
-## Configuration
+```toml
+[oauth]
+authorize_all_scopes = true
+allowed_scopes = ["^(patient|user|system)/.*", "^OH_.*", "fhirUser", "launch", "launch/patient", "launch/encounter", "offline_access"]
 
-### SMART on FHIR Launch Context
+[oauth.endpoints.v2]
+oidc_consent_page = "http://localhost:9091/consent"
 
-The accelerator automatically handles SMART launch scopes:
+[oauth.grant_type.authorization_code]
+grant_handler = "org.wso2.healthcare.is.tokenmgt.handlers.HealthcareAuthorizationCodeGrantHandler"
 
-- **`launch/patient`**: Adds patient context to token response
-- **`launch/practitioner`**: Adds practitioner context to token response
+[[resource.access_control]]
+context = "(.*)/scim2/Me"
+secure = true
+http_method = "GET"
+cross_tenant = true
+permissions = []
+scopes = []
 
-No additional configuration is required beyond setting up the user claims.
+[[event_listener]]
+id = "token_revocation"
+type = "org.wso2.carbon.identity.core.handler.AbstractIdentityHandler"
+name = "org.wso2.is.notification.ApimOauthEventInterceptor"
+order = 1
 
-### User Claims Mapping
+[event_listener.properties]
+notification_endpoint = "https://localhost:9443/internal/data/v1/notify"
+username = "${admin.username}"
+password = "${admin.password}"
+'header.X-WSO2-KEY-MANAGER' = "WSO2-IS"
 
-Ensure users have the appropriate patient or practitioner ID claims populated in their user profiles:
-
-1. **For patients**: Set the `http://wso2.org/claims/patient` claim to the FHIR patient resource ID
-2. **For practitioners**: Set the `http://wso2.org/claims/practitioner` claim to the FHIR practitioner resource ID
-
-## Usage Example
-
-### OAuth2 Token Request with SMART Scope
-
-**Request**:
-```bash
-curl -X POST https://<IS_HOST>:<IS_PORT>/oauth2/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=authorization_code" \
-  -d "code=<authorization_code>" \
-  -d "redirect_uri=<redirect_uri>" \
-  -d "client_id=<client_id>" \
-  -d "client_secret=<client_secret>"
+[role_mgt]
+allow_system_prefix_for_role = true
 ```
 
-**Response** (when user has patient context and `launch/patient` scope was requested):
+## SMART on FHIR Launch Context
+
+When a token request includes a `launch/*` scope, `HealthcareSmartAuthTokenResponseHandler` resolves the context value from the user's claims and adds it to the token response:
+
+| Scope | Token response parameter | Claim URI |
+|---|---|---|
+| `launch/patient` | `patient` | `http://wso2.org/claims/patient` |
+| `launch/practitioner` | `practitioner` | `http://wso2.org/claims/practitioner` |
+| `launch/encounter` | `encounter` | `http://wso2.org/claims/encounter` |
+
+**Example token response with `launch/patient`:**
 ```json
 {
-  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGci...",
-  "refresh_token": "ef3a7c5e-7c2e-4c5e-8f3a...",
+  "access_token": "...",
   "token_type": "Bearer",
   "expires_in": 3600,
+  "scope": "launch/patient patient/*.read",
   "patient": "patient-123"
 }
 ```
 
-## Verification
+## Refresh Token Behavior
 
-To verify the installation:
-
-1. **Check component is loaded**:
-   - View IS server startup logs
-   - Look for: `Healthcare SMART Auth service component activated`
-
-2. **Test token endpoint**:
-   - Request a token with `launch/patient` scope
-   - Verify the `patient` attribute is present in the response
-
-3. **Check OSGi console** (if enabled):
-   ```bash
-   osgi> lb | grep healthcare
-   ```
-   Should show the `org.wso2.healthcare.is.smart.auth` bundle as ACTIVE
+The `HealthcareAuthorizationCodeGrantHandler` removes the refresh token from the response unless `offline_access` is explicitly requested, per the SMART on FHIR specification.
 
 ## Troubleshooting
 
-### Component Not Loading
+**Token response missing launch context (`patient`, `practitioner`, `encounter`)**
+- Verify the JAR is in `<IS_HOME>/repository/components/dropins/`
+- Check that the user's claim is populated with a value
+- Review IS startup logs for bundle activation errors: `Healthcare SMART Auth service component activated`
 
-**Symptom**: Token responses don't include patient/practitioner context
+**Scope not authorized**
+- Ensure `allowed_scopes` in `deployment.toml` includes the requested scope
+- Verify `authorize_all_scopes = true` is set
 
-**Solutions**:
-1. Check IS logs for errors during component activation
-2. Verify JAR file is in the correct `dropins` folder
-3. Ensure all dependencies are available (they should be in standard IS distribution)
-4. Restart the server with `-DosgiConsole` flag to check bundle status
-
-### Claims Not Resolved
-
-**Symptom**: Token response has `null` for patient/practitioner value
-
-**Solutions**:
-1. Verify claim URIs are correctly configured in IS
-2. Check user profile has the claim values populated
-3. Ensure claim dialect mapping is correct
-4. Review IS logs for claim resolution errors
-
-### Scope Not Working
-
-**Symptom**: Launch scope is requested but context not added
-
-**Solutions**:
-1. Verify the exact scope string matches: `launch/patient` or `launch/practitioner`
-2. Ensure the scope is included in the OAuth application configuration
-3. Check that the user has the corresponding claim in their profile
+**Check bundle status** (if OSGi console is enabled):
+```bash
+osgi> lb | grep healthcare
+```
+Both `org.wso2.healthcare.is.smart.auth` and `org.wso2.healthcare.is.tokenmgt` should show as `ACTIVE`.
 
 ## Uninstallation
 
-To remove the accelerator:
-
-1. **Stop the Identity Server**:
+1. Stop WSO2 IS.
+2. Remove the component JARs:
    ```bash
-   cd <IS_HOME>/bin
-   ./wso2server.sh stop
+   rm <IS_HOME>/repository/components/dropins/org.wso2.healthcare.is.*.jar
    ```
-
-2. **Remove the component JARs**:
+3. Restore the original `deployment.toml` from the backup:
    ```bash
-   rm <IS_HOME>/repository/components/dropins/org.wso2.healthcare.is.smart.auth*.jar
-   rm <IS_HOME>/repository/components/dropins/org.wso2.healthcare.is.tokenmgt*.jar
+   cp <IS_HOME>/hc-accelerator/backup/conf/deployment.toml <IS_HOME>/repository/conf/deployment.toml
    ```
-
-3. **Clean cached OSGi bundles** (optional but recommended):
-   ```bash
-   rm -rf <IS_HOME>/repository/components/plugins/org.wso2.healthcare.is.smart.auth*
-   rm -rf <IS_HOME>/repository/components/plugins/org.wso2.healthcare.is.tokenmgt*
-   ```
-
-4. **Remove custom grant handler configuration**:
-   Edit `<IS_HOME>/repository/conf/deployment.toml` and remove the custom grant handler configuration:
-   ```toml
-   # Remove these lines
-   [oauth.grant_type.authorization_code]
-   grant_handler = "org.wso2.healthcare.is.tokenmgt.handlers.HealthcareAuthorizationCodeGrantHandler"
-   ```
-
-5. **Start the Identity Server**:
-   ```bash
-   cd <IS_HOME>/bin
-   ./wso2server.sh
-   ```
-
-## Additional Resources
-
-- [WSO2 Healthcare Accelerator Main README](../../README.md)
-- [IS Accelerator Components Documentation](../../product-accelerators/is/README.md)
-- [SMART on FHIR Specification](https://hl7.org/fhir/smart-app-launch/)
-- [WSO2 Identity Server Documentation](https://is.docs.wso2.com/)
-
-## Support
-
-For issues and questions:
-- GitHub Issues: https://github.com/wso2/healthcare-accelerator/issues
-- WSO2 Support: https://wso2.com/support/
+4. Start WSO2 IS.
 
 ## License
 
-Copyright (c) 2024, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+Copyright (c) 2026, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Licensed under the Apache License, Version 2.0. See [LICENSE](http://www.apache.org/licenses/LICENSE-2.0).

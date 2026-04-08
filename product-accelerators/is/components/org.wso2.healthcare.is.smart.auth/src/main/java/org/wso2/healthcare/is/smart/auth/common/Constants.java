@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2026, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -28,10 +28,13 @@ public class Constants {
     public static final String LAUNCH_SCOPE_PREFIX = "launch/";
     public static final String PATIENT_LAUNCH_SCOPE = "launch/patient";
     public static final String PRACTITIONER_LAUNCH_SCOPE = "launch/practitioner";
+    public static final String ENCOUNTER_LAUNCH_SCOPE = "launch/practitioner";
     public static final String DEFAULT_PATIENT_ID_CLAIM_URI = "http://wso2.org/claims/patient";
     public static final String DEFAULT_PRACTITIONER_ID_CLAIM_URI = "http://wso2.org/claims/practitioner";
+    public static final String DEFAULT_ENCOUNTER_ID_CLAIM_URI = "http://wso2.org/claims/practitioner";
     public static final String PATIENT_ATTRIBUTE = "patient";
     public static final String PRACTITIONER_ATTRIBUTE = "practitioner";
+    public static final String ENCOUNTER_ATTRIBUTE = "encounter";
 
     /**
      * Error message codes to be used for the healthcare SMART component.

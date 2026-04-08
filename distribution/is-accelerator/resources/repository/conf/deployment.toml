@@ -84,18 +84,14 @@ app_password= "dashboard"
 
 # healthcare-accelerator specific configurations.
 [oauth]
-show_display_name_in_consent_page = true
 authorize_all_scopes = true
+allowed_scopes = ["^(patient|user|system)/.*", "^OH_.*", "fhirUser", "launch", "launch/patient", "offline_access"]
 
-# Temporary fix to use the custom grant handler for authorization code grant type.
-# This will be removed once proper extension point to auth code grant handler is released.
+[oauth.endpoints.v2]
+oidc_consent_page="http://localhost:9091/consent"
+
 [oauth.grant_type.authorization_code]
-grant_handler = "org.wso2.healthcare.apim.tokenmgt.handlers.OpenHealthcareExtendedAuthorizationCodeGrantHandler"
-
-# Custom code response type handler for SMART on FHIR
-[[oauth.custom_response_type]]
-name = "code"
-class = "org.wso2.healthcare.is.smart.auth.handlers.OpenHealthcareExtendedCodeResponseTypeHandler"
+grant_handler = "org.wso2.healthcare.is.tokenmgt.handlers.HealthcareAuthorizationCodeGrantHandler"
 
 [[resource.access_control]]
 context="(.*)/scim2/Me"
@@ -117,90 +113,5 @@ username = "${admin.username}"
 password = "${admin.password}"
 'header.X-WSO2-KEY-MANAGER' = "WSO2-IS"
 
-# Private Key JWT Client Authenticator
-[[event_listener]]
-id = "private_key_jwt_authenticator"
-type = "org.wso2.carbon.identity.core.handler.AbstractIdentityHandler"
-name = "org.wso2.healthcare.apim.clientauth.jwt.PrivateKeyJWTClientAuthenticator"
-order = "899"
-#[event_listener.properties]
-#max_allowed_jwt_lifetime_seconds = "300"
-#token_endpoint_alias = "sampleurl"
-
-[[cache.manager]]
-name = "IdentityApplicationManagementCacheManager"
-timeout = "10"
-capacity = "5000"
-
-# Healthcare SMART on FHIR scope management
-[healthcare.identity.scopemgt]
-roles = ["patient-read", "patient-write", "user-read", "user-write"]
-enable_fhir_scope_to_wso2_scope_mapping = true
-
-# Shared scopes for FHIR resources
-[[healthcare.identity.scopemgt.shared_scopes]]
-key = "patient/*.c"
-name = "patient/*.c"
-roles = "patient-write"
-description = "This scope grants patients access to CREATE any fhir resource."
-
-[[healthcare.identity.scopemgt.shared_scopes]]
-key = "patient/*.r"
-name = "patient/*.r"
-roles = "patient-write,patient-read"
-description = "This scope grants patients access to READ any fhir resource."
-
-[[healthcare.identity.scopemgt.shared_scopes]]
-key = "patient/*.u"
-name = "patient/*.u"
-roles = "patient-write"
-description = "This scope grants patients access to UPDATE any fhir resource."
-
-[[healthcare.identity.scopemgt.shared_scopes]]
-key = "patient/*.d"
-name = "patient/*.d"
-roles = "patient-write"
-description = "This scope grants patients access to DELETE any fhir resource."
-
-[[healthcare.identity.scopemgt.shared_scopes]]
-key = "patient/*.s"
-name = "patient/*.s"
-roles = "patient-write,patient-read"
-description = "This scope grants patients access to SEARCH any fhir resource."
-
-[[healthcare.identity.scopemgt.shared_scopes]]
-key = "user/*.c"
-name = "user/*.c"
-roles = "user-write"
-description = "This scope grants other users access to CREATE any fhir resource."
-
-[[healthcare.identity.scopemgt.shared_scopes]]
-key = "user/*.r"
-name = "user/*.r"
-roles = "user-write,user-read"
-description = "This scope grants other users access to READ any fhir resource."
-
-[[healthcare.identity.scopemgt.shared_scopes]]
-key = "user/*.u"
-name = "user/*.u"
-roles = "user-write"
-description = "This scope grants other users access to UPDATE any fhir resource."
-
-[[healthcare.identity.scopemgt.shared_scopes]]
-key = "user/*.d"
-name = "user/*.d"
-roles = "user-write"
-description = "This scope grants other users access to DELETE any fhir resource."
-
-[[healthcare.identity.scopemgt.shared_scopes]]
-key = "user/*.s"
-name = "user/*.s"
-roles = "user-write,user-read"
-description = "This scope grants other users access to SEARCH any fhir resource."
-
-# Healthcare identity claims configuration
-#[healthcare.identity.claims]
-#patient_id_claim_uri = "http://wso2.org/claims/patientId"
-#patient_id_key = "patientId"
-#fhirUser_resource_url_context = "/r4/Patient"
-#fhirUser_resource_id_claim_uri = "http://wso2.org/claims/patientId"
+[role_mgt]
+allow_system_prefix_for_role = true
