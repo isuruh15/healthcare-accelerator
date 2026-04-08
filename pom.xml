@@ -37,7 +37,7 @@
     </modules>
 
     <properties>
-        <carbon.kernel.version>4.6.0</carbon.kernel.version>
+        <carbon.kernel.version>4.9.10</carbon.kernel.version>
         <carbon.multitenancy.version>4.8.1</carbon.multitenancy.version>
         <carbon.apimgt.version>9.29.120</carbon.apimgt.version>
         <carbon.commons.version>4.7.32</carbon.commons.version>
@@ -107,11 +107,11 @@
         <osgi.service.component.imp.pkg.version.range>[1.2.0, 2.0.0)</osgi.service.component.imp.pkg.version.range>
         <carbon.apimgt.package.import.version.range>[9.0.174, 10.0.0)</carbon.apimgt.package.import.version.range>
         <osgi.framework.imp.pkg.version.range>[1.7.0, 2.0.0)</osgi.framework.imp.pkg.version.range>
-        <identity.inbound.auth.oauth.imp.pkg.version.range>[6.2.0, 7.0.0)</identity.inbound.auth.oauth.imp.pkg.version.range>
-        <carbon.kernel.package.import.version.range>[4.5.0, 5.0.0)</carbon.kernel.package.import.version.range>
-        <carbon.identity.framework.imp.pkg.version.range>[5.18.0, 6.0.0)</carbon.identity.framework.imp.pkg.version.range>
-        <carbon.user.api.imp.pkg.version.range>[4.6.0, 5.0.0)</carbon.user.api.imp.pkg.version.range>
-        <carbon.identity.inbound.auth.oauth.version.range>[6.2.0, 7.0.102)</carbon.identity.inbound.auth.oauth.version.range>
+        <identity.inbound.auth.oauth.imp.pkg.version.range>[6.11.11, 8.0.0)</identity.inbound.auth.oauth.imp.pkg.version.range>
+        <carbon.kernel.package.import.version.range>[4.6.0, 5.0.0)</carbon.kernel.package.import.version.range>
+        <carbon.identity.framework.imp.pkg.version.range>[5.20.90, 8.0.0)</carbon.identity.framework.imp.pkg.version.range>
+        <carbon.user.api.imp.pkg.version.range>[1.0.1, 2.0.0)</carbon.user.api.imp.pkg.version.range>
+        <carbon.identity.inbound.auth.oauth.version.range>[6.11.11, 8.0.0)</carbon.identity.inbound.auth.oauth.version.range>
         <commons-lang.wso2.osgi.version.range>[2.6.0, 3.0.0)</commons-lang.wso2.osgi.version.range>
         <commons-logging.osgi.version.range>[1.2.0, 2.0.0)</commons-logging.osgi.version.range>
     </properties>
