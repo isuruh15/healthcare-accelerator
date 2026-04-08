@@ -35,6 +35,7 @@ import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.utils.CarbonUtils;
 import org.wso2.healthcare.apim.core.OpenHealthcareException;
 import org.wso2.healthcare.apim.core.ReferenceHolder;
+import org.wso2.healthcare.apim.core.utils.CommonUtil;
 import org.wso2.healthcare.apim.core.utils.ScopeMgtUtil;
 import org.wso2.securevault.SecretResolver;
 import org.wso2.securevault.SecretResolverFactory;
@@ -71,6 +72,8 @@ public class OpenHealthcareConfig {
     private Map<String, MailNotificationConfig> notificationMailConfig;
     private OrganizationConfig organizationConfig;
     private ScopeMgtConfig scopeMgtConfig;
+    private Map<String, BackendAuthConfig> backendAuthConfig;
+    private SmartConfig smartConfig;
 
     private OpenHealthcareConfig(TomlParseResult config) throws OpenHealthcareException {
         this.config = config;
@@ -153,6 +156,14 @@ public class OpenHealthcareConfig {
         return scopeMgtConfig;
     }
 
+    public Map<String, BackendAuthConfig> getBackendAuthConfig() {
+        return backendAuthConfig;
+    }
+
+    public SmartConfig getSmartConfig() {
+        return smartConfig;
+    }
+
     private void parse(TomlParseResult config) throws OpenHealthcareException {
 
         secretResolver = SecretResolverFactory.create((OMElement) null, false);
@@ -183,6 +194,10 @@ public class OpenHealthcareConfig {
         organizationConfig = buildOrganizationconfig();
         //Parse scope mgt config
         scopeMgtConfig = buildScopeMgtConfig();
+        //Parse backend auth config
+        backendAuthConfig = buildBackendAuthConfig();
+        //Parse SMART config
+        smartConfig = buildSmartConfig();
     }
 
     private AccountConfig buildAccountConfig() throws OpenHealthcareException {
@@ -288,6 +303,11 @@ public class OpenHealthcareConfig {
                     fhirConfigTable.getString("server_name", () -> ConfigConstants.DEFAULT_FHIR_SERVER_NAME));
             fhirServerConfig.setServerVersion(
                     fhirConfigTable.getString("server_version", () -> ConfigConstants.DEFAULT_FHIR_SERVER_VERSION));
+            String serverMetadataPublishedTime = fhirConfigTable.getString("server_metadata_published_time");
+            fhirServerConfig.setCapabilityStatementPublishedTime(
+                    serverMetadataPublishedTime != null ?
+                            CommonUtil.convertTimeToLong(serverMetadataPublishedTime) : CommonUtil.getServerStartupTime()
+            );
         }
         return fhirServerConfig;
     }
@@ -570,6 +590,106 @@ public class OpenHealthcareConfig {
         }
         return scopeMgtConfig;
 
+    }
+
+    private Map<String, BackendAuthConfig> buildBackendAuthConfig() throws OpenHealthcareException {
+
+        Map<String, BackendAuthConfig> backendAuthConfigs = new HashMap<>();
+        Object backendAuthConfigObject = config.get("healthcare.backend.auth");
+        if (backendAuthConfigObject instanceof TomlArray) {
+            TomlArray authConfig = (TomlArray) backendAuthConfigObject;
+            List<Object> authConfigList = authConfig.toList();
+            for (Object notification : authConfigList) {
+                if (notification instanceof TomlTable) {
+                    TomlTable beAuthTable = (TomlTable) notification;
+                    BackendAuthConfig backendAuthConfig = new BackendAuthConfig();
+                    if (StringUtils.isEmpty(beAuthTable.getString("name")) ||
+                            StringUtils.isEmpty(beAuthTable.getString("token_endpoint"))) {
+                        throw new OpenHealthcareException("One or more mandatory parameter/s in the notification " +
+                                "config missing. [Mandatory params - name, token_endpoint]");
+                    }
+                    backendAuthConfig.setName(beAuthTable.getString("name"));
+                    backendAuthConfig.setAuthEndpoint(beAuthTable.getString("token_endpoint"));
+                    backendAuthConfig.setClientId(beAuthTable.getString("client_id"));
+                    String clientId = beAuthTable.getString("client_id", () -> null);
+                    if (clientId != null) {
+                        backendAuthConfig.setClientId(clientId);
+                    }
+                    String keyAlias = beAuthTable.getString("private_key_alias", () -> null);
+                    if (keyAlias != null) {
+                        backendAuthConfig.setPrivateKeyAlias(keyAlias);
+                    }
+                    String clientSecret = beAuthTable.getString("client_secret", () -> null);
+                    if (clientSecret != null) {
+                        backendAuthConfig.setClientSecret(resolveSecret(clientSecret));
+                    }
+                    backendAuthConfig.setAuthType(beAuthTable.getString("auth_type"));
+                    backendAuthConfigs.put(backendAuthConfig.getName(), backendAuthConfig);
+                }
+            }
+        }
+        return backendAuthConfigs;
+    }
+
+    private SmartConfig buildSmartConfig() {
+        LOG.debug("Building SMART configuration");
+        SmartConfig smartConfig = new SmartConfig();
+        Object smartConfObj = config.get("healthcare.smartconfig");
+        if (smartConfObj instanceof TomlTable) {
+            TomlTable smartConfigTable = (TomlTable) smartConfObj;
+
+            // Auth methods
+            TomlArray authMethodsArr = smartConfigTable.getArray("auth_methods");
+            if (authMethodsArr != null) {
+                List<String> authMethodsList = new ArrayList<>();
+                for (int i = 0; i < authMethodsArr.size(); i++) {
+                    authMethodsList.add(authMethodsArr.getString(i));
+                }
+                smartConfig.setAuthMethods(authMethodsList);
+            }
+
+            // Grant types supported
+            TomlArray grantTypesSupportedArr = smartConfigTable.getArray("grant_types_supported");
+            if (grantTypesSupportedArr != null) {
+                List<String> grantTypesSupportedList = new ArrayList<>();
+                for (int i = 0; i < grantTypesSupportedArr.size(); i++) {
+                    grantTypesSupportedList.add(grantTypesSupportedArr.getString(i));
+                }
+                smartConfig.setGrantTypesSupported(grantTypesSupportedList);
+            }
+
+            // Scopes supported
+            TomlArray scopesSupportedArr = smartConfigTable.getArray("scopes_supported");
+            if (scopesSupportedArr != null) {
+                List<String> scopesSupportedList = new ArrayList<>();
+                for (int i = 0; i < scopesSupportedArr.size(); i++) {
+                    scopesSupportedList.add(scopesSupportedArr.getString(i));
+                }
+                smartConfig.setScopesSupported(scopesSupportedList);
+            }
+
+            // Response types
+            TomlArray responseTypesArr = smartConfigTable.getArray("response_types");
+            if (responseTypesArr != null) {
+                List<String> responseTypesList = new ArrayList<>();
+                for (int i = 0; i < responseTypesArr.size(); i++) {
+                    responseTypesList.add(responseTypesArr.getString(i));
+                }
+                smartConfig.setResponseTypes(responseTypesList);
+            }
+
+            // Capabilities
+            TomlArray capabilitiesArr = smartConfigTable.getArray("capabilities");
+            if (capabilitiesArr != null) {
+                List<String> capabilitiesList = new ArrayList<>();
+                for (int i = 0; i < capabilitiesArr.size(); i++) {
+                    capabilitiesList.add(capabilitiesArr.getString(i));
+                }
+                smartConfig.setCapabilities(capabilitiesList);
+            }
+        }
+        LOG.info("SMART configuration loaded successfully");
+        return smartConfig;
     }
 
     private char[] resolveSecret(String secret) {

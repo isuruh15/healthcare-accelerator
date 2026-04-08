@@ -25,6 +25,7 @@ public class FHIRServerConfig {
 
     private String serverName = ConfigConstants.DEFAULT_FHIR_SERVER_NAME;
     private String serverVersion = ConfigConstants.DEFAULT_FHIR_SERVER_VERSION;
+    private long capabilityStatementPublishedTime;
 
     public FHIRServerConfig() {
     }
@@ -47,5 +48,15 @@ public class FHIRServerConfig {
     public void setServerVersion(String serverVersion) {
 
         this.serverVersion = serverVersion;
+    }
+
+    public long getCapabilityStatementPublishedTime() {
+
+        return capabilityStatementPublishedTime;
+    }
+
+    public void setCapabilityStatementPublishedTime(long capabilityStatementPublishedTime) {
+
+        this.capabilityStatementPublishedTime = capabilityStatementPublishedTime;
     }
 }

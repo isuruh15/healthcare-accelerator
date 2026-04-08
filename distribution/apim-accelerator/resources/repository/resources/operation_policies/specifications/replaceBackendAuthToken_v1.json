@@ -1,0 +1,62 @@
+{
+  "category": "Mediation",
+  "name": "replaceBackendAuthToken",
+  "version": "v1",
+  "displayName": "Replace Backend Auth Token",
+  "description": "This handler will replace backend Auth token with a token from external Auth server",
+  "applicableFlows": [
+    "request"
+  ],
+  "supportedGateways": [
+    "Synapse"
+  ],
+  "supportedApiTypes": [
+    "HTTP"
+  ],
+  "policyAttributes": [
+    {
+      "name": "configValue",
+      "displayName": "Predefined Configuration",
+      "description": "Name of a predefined config. This value has to be an exact match with a config name in the deployment.toml [[healthcare.backend.auth]] section.",
+      "type": "String",
+      "required": false
+    },
+    {
+      "name": "authType",
+      "displayName": "Auth Type",
+      "description": "Type of configuration to be used for obtaining the backend auth token.",
+      "validationRegex": "^(client_credentials|pkjwt)$",
+      "type": "Enum",
+      "allowedValues" : ["client_credentials","pkjwt"],
+      "required": false
+    },
+    {
+      "name": "tokenEndpoint",
+      "displayName": "Token Endpoint",
+      "description": "Applicable only if the Configuration Type is INLINE. This is the token endpoint of the external auth server",
+      "type": "String",
+      "required": false
+    },
+    {
+      "name": "clientId",
+      "displayName": "Client ID",
+      "description": "Applicable only if the Configuration Type is INLINE. This is the client ID of the OAuth app in external auth server. You can enter the value inline or use a synapse expression",
+      "type": "String",
+      "required": false
+    },
+    {
+      "name": "clientSecret",
+      "displayName": "Client Secret",
+      "description": "Applicable only if the Configuration Type is INLINE and Auth Type is client_credentials. This is the client secret of the OAuth app in external auth server",
+      "type": "String",
+      "required": false
+    },
+    {
+      "name": "keyAlias",
+      "displayName": "Key Alias",
+      "description": "Applicable only if the Configuration Type is INLINE and Auth Type is pkjwt. This is the key alias of the private key in the keystore. You can enter the value inline or use a synapse expression",
+      "type": "String",
+      "required": false
+    }
+  ]
+}

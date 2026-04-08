@@ -45,4 +45,14 @@ public class FHIRServerConfigAPI {
         return OpenHealthcareEnvironment.getInstance().getConfig().getFHIRServerConfig().getServerVersion();
     }
 
+    /**
+     * Function to retrieve capability statement published time of this Server
+     *
+     * @return capability statement published time
+     * @throws OpenHealthcareException
+     */
+    public static long getCapabilityStatementPublishedTime() throws OpenHealthcareException {
+        return OpenHealthcareEnvironment.getInstance().getConfig().getFHIRServerConfig().getCapabilityStatementPublishedTime();
+    }
+
 }

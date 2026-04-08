@@ -24,12 +24,12 @@
     <parent>
         <groupId>org.wso2.healthcare</groupId>
         <artifactId>healthcare-accelerator</artifactId>
-        <version>1.0.0</version>
+        <version>2.0.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>product-accelerators</artifactId>
-    <version>1.0.0</version>
+    <version>2.0.0</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -42,8 +42,12 @@
         <module>apim/components/org.wso2.healthcare.apim.clientauth.jwt</module>
         <module>apim/components/org.wso2.healthcare.apim.scopemgt</module>
         <module>apim/components/org.wso2.healthcare.apim.tokenmgt</module>
+        <module>apim/components/org.wso2.healthcare.apim.backendauth</module>
         <module>apim/apps/authentication-portal</module>
         <module>apim/apps/recovery-portal</module>
+        <module>apim/apps/identity-shared</module>
+        <module>is/components/org.wso2.healthcare.is.smart.auth</module>
+        <module>is/components/org.wso2.healthcare.is.tokenmgt</module>
     </modules>
 
 </project>

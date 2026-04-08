@@ -52,6 +52,8 @@ import org.wso2.healthcare.apim.core.api.server.FHIRServerConfigAPI;
 
 import javax.xml.stream.XMLStreamException;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -148,27 +150,23 @@ public class ConformanceMediator extends AbstractMediator {
     public CapabilityStatement createCapabilityStatement(String tenant, MessageContext mc)
             throws ConformanceMediatorException {
 
+        CapabilityStatement capabilityStatement = new CapabilityStatement();
+
         String serverName;
         String serverVersion;
         Registry registry;
         try {
             serverName = FHIRServerConfigAPI.getFHIRServerName();
             serverVersion = FHIRServerConfigAPI.getFHIRServerVersion();
+            capabilityStatement.setDate(new Date(FHIRServerConfigAPI.getCapabilityStatementPublishedTime()));
             registry = Util.getUserRegistry(tenant);
         } catch (RegistryException | UserStoreException e) {
+            LOG.error("Error occurred while retrieving User Registry for tenant", e);
             throw new ConformanceMediatorException("Error occurred while retrieving User Registry for tenant", e);
         } catch (OpenHealthcareException e) {
+            LOG.error("Error occurred while retrieving FHIR server configs", e);
             throw new ConformanceMediatorException("Error occurred while retrieving FHIR server configs", e);
         }
-
-        JsonObject wellKnownResponse;
-        if (ConformanceDataHolder.getInstance().getWellKnownResponse() != null) {
-            wellKnownResponse = ConformanceDataHolder.getInstance().getWellKnownResponse();
-        } else {
-            wellKnownResponse = Util.getWellKnownResponse(mc);
-            ConformanceDataHolder.getInstance().setWellKnownResponse(wellKnownResponse);
-        }
-
 
         GovernanceArtifactConfiguration govConfig;
         try {
@@ -193,7 +191,6 @@ public class ConformanceMediator extends AbstractMediator {
         }
         String gatewayBaseURL = Util.getGatewayEnvURL();
 
-        CapabilityStatement capabilityStatement = new CapabilityStatement();
         capabilityStatement.setKind(CapabilityStatement.CapabilityStatementKind.INSTANCE);
         capabilityStatement.setName(serverName);
         capabilityStatement.setFhirVersion(Enumerations.FHIRVersion._4_0_1);
@@ -222,13 +219,13 @@ public class ConformanceMediator extends AbstractMediator {
         Extension oauthExtension = Util.createExtension("http://fhir-registry.smarthealthit" +
                 ".org/StructureDefinition/oauth-uris", "", EXTENSION_VALUETYPE_SECURITY);
         oauthExtension.addExtension(
-                Util.createExtension("token", wellKnownResponse.get("token_endpoint").getAsString(),
+                Util.createExtension("token", Util.getKeyManagerProperty(tenant, 0, "token_endpoint"),
                         EXTENSION_VALUETYPE_SECURITY));
         oauthExtension.addExtension(
-                Util.createExtension("revoke", wellKnownResponse.get("revocation_endpoint").getAsString(),
+                Util.createExtension("revoke", Util.getKeyManagerProperty(tenant, 0, "revoke_endpoint"),
                         EXTENSION_VALUETYPE_SECURITY));
         oauthExtension.addExtension(
-                Util.createExtension("authorize", wellKnownResponse.get("authorization_endpoint").getAsString(),
+                Util.createExtension("authorize", Util.getKeyManagerProperty(tenant, 0, "authorize_endpoint"),
                         EXTENSION_VALUETYPE_SECURITY));
         //If willing to expose DCR endpoint, add DCR endpoint url as 'register' extension
         security.addExtension(oauthExtension);
@@ -345,13 +342,23 @@ public class ConformanceMediator extends AbstractMediator {
     public Set<API> getAllPublishedAPIs(String tenant) throws APIManagementException {
         APIProvider apiProvider = APIManagerFactory.getInstance().getAPIProvider(APIConstants.WSO2_ANONYMOUS_USER);
 
-        Map<String, Object> result = apiProvider.searchPaginatedAPIs("status:PUBLISHED", tenant, 0, 1000, "", "desc");
+        List<API> apiList = apiProvider.getAllAPIs();
 
-        Set<API> apis = (Set<API>) result.get("apis");
-        for (API api: apis) {
-            api.setSwaggerDefinition(getSwagger(api.getUuid(), tenant));
+        Set<API> publishedApis = new HashSet<>();
+        for (API api : apiList) {
+            if (api.getStatus().equals(APIConstants.PUBLISHED)) {
+                LOG.debug("Processing published API: " + api.getId().getApiName() + " version: " + api.getId().getVersion());
+                try {
+                    api.setSwaggerDefinition(getSwagger(api.getUuid(), tenant));
+                    publishedApis.add(api);
+                } catch (APIManagementException e) {
+                    // This can occur due to apiId and tenant mismatch.
+                    LOG.error("Error occurred while retrieving OpenAPI definition for API: " + api.getId(), e);
+                    LOG.error("Failed to retrieve OpenAPI definition for API: " + api.getId().getApiName() + ", error: " + e.getMessage());
+                }
+            }
         }
-        return apis;
+        return publishedApis;
     }
 
     public String getSwagger(String apiId, String tenant) throws APIManagementException {

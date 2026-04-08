@@ -47,9 +47,13 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 /**
  * This class contains all the utility functions that are used in Conformance Mediator
@@ -172,7 +176,8 @@ public class Util {
     public static List<KeyManagerConfigurationDTO> getKeyManagerConfigs(String tenantDomain) {
         APIAdmin apiAdmin = new APIAdminImpl();
         try {
-            return apiAdmin.getKeyManagerConfigurationsByOrganization(tenantDomain);
+            // Passing new boolean flag for 'checkUsages' as false with 4.3.0 onwards
+            return apiAdmin.getKeyManagerConfigurationsByOrganization(tenantDomain, false);
         } catch (APIManagementException e) {
             throw new ConformanceMediatorException(e.getMessage());
         }
@@ -260,5 +265,23 @@ public class Util {
             throw new ConformanceMediatorException("Error occurred while calling key manager well-known endpoint", e);
         }
         return wellKnownResponse;
+    }
+
+    /**
+     * Get the current time in UTC format.
+     *
+     * @return current time in UTC format
+     */
+    public static Date getDateFromUTC(String utcTime) {
+        try {
+            // Create a SimpleDateFormat for parsing UTC string
+            SimpleDateFormat utcFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+            utcFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+            // Parse the UTC string into a Date object
+            return utcFormat.parse(utcTime);
+        } catch (ParseException e) {
+            throw new ConformanceMediatorException("Error occurred while parsing UTC time", e);
+        }
     }
 }

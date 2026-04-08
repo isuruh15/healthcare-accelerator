@@ -24,11 +24,11 @@
     <parent>
         <groupId>org.wso2.healthcare</groupId>
         <artifactId>distribution</artifactId>
-        <version>1.0.0</version>
+        <version>2.0.0</version>
     </parent>
 
     <artifactId>apim-accelerator</artifactId>
-    <version>1.0.0</version>
+    <version>2.0.0</version>
     <packaging>pom</packaging>
 
     <build>
@@ -77,7 +77,7 @@
                                     </includes>
                                 </resource>
                                 <resource>
-                                    <directory>${basedir}/../../distribution/apim-accelerator/update</directory>
+                                    <directory>${basedir}/../../distribution/apim-accelerator/updates</directory>
                                     <filtering>true</filtering>
                                     <includes>
                                         <include>**/product.txt</include>
@@ -157,6 +157,10 @@
                                     <fileset dir="${basedir}/../../product-accelerators/apim/components/org.wso2.healthcare.apim.gateway.security.jwt.generator/target">
                                         <include name="org.wso2.healthcare.apim.gateway.security.jwt.generator-${project.version}.jar"/>
                                     </fileset>
+                                    <!--PKJWT Backend Auth Handler-->
+                                    <fileset dir="${basedir}/../../product-accelerators/apim/components/org.wso2.healthcare.apim.backendauth/target">
+                                        <include name="org.wso2.healthcare.apim.backendauth-${project.version}.jar"/>
+                                    </fileset>
                                 </copy>
 
                                 <!--Add Bundles to lib-->
@@ -195,12 +199,12 @@
                                 <!--                                        <include name="api#openhealthcare#consent-mgt#v1.0.war"/>-->
                                 <!--                                    </fileset>-->
                                 <!--                                </copy>-->
-                                <copy todir="${product_home}/carbon-home/repository/deployment/server/webapps/authenticationendpoint">
-                                    <fileset dir="${basedir}/../../product-accelerators/apim/apps/authentication-portal/src/main/resources/custom"
-                                             includes="**"/>
-                                </copy>
-                                <copy todir="${product_home}/carbon-home/repository/deployment/server/webapps/accountrecoveryendpoint">
-                                    <fileset dir="${basedir}/../../product-accelerators/apim/apps/recovery-portal/src/main/resources/custom"
+<!--                                Revisit the usage and extend only required custom UI features: -->
+<!--                                todo: https://github.com/wso2-enterprise/open-healthcare/issues/1695-->
+
+<!--                                Copy custom UI components(Identity apps) to the distribution-->
+                                <copy todir="${product_home}/carbon-home/repository/resources/extensions">
+                                    <fileset dir="${basedir}/../../product-accelerators/apim/apps/identity-shared/src/main/resources/extensions"
                                              includes="**"/>
                                 </copy>
 
@@ -279,6 +283,14 @@
                                             excludes="**/velocity_template.xml"/>
                                 </copy>
 
+                                <!--Add operation policies-->
+                                <copy
+                                        todir="${product_home}/carbon-home/repository/resources/operation_policies">
+                                    <fileset
+                                            dir="${basedir}/../../distribution/apim-accelerator/resources/repository/resources/operation_policies"
+                                            includes="**"/>
+                                </copy>
+
                                 <!--Add bin folder with merge.sh-->
                                 <copy
                                         todir="${product_home}/bin">
@@ -310,7 +322,7 @@
 
                                 <!--Add LICENSE.txt file-->
                                 <copy todir="${product_home}">
-                                    <fileset dir="${basedir}/../../distribution/apim-accelerator/update">
+                                    <fileset dir="${basedir}/../../distribution/apim-accelerator/updates">
                                         <include name="LICENSE.txt"/>
                                     </fileset>
                                 </copy>
@@ -387,7 +399,7 @@
 
                                         <!--Add update directory -->
                                         <copy
-                                                todir="${product_home}/update">
+                                                todir="${product_home}/updates">
                                             <fileset
                                                     dir="target/extra-resources"
                                                     includes="product.txt"/>
@@ -397,7 +409,7 @@
                                         <copy
                                                 todir="${product_home}/bin">
                                             <fileset
-                                                    dir="${basedir}/../../distribution/apim-accelerator/update/bin"
+                                                    dir="${basedir}/../../distribution/apim-accelerator/updates/bin"
                                                     includes="**"/>
                                         </copy>
                                     </tasks>

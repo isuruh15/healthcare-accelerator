@@ -51,9 +51,9 @@ public class ConfigConstants {
     public static final String DEFAULT_WEBAPP_LOGO_WIDTH = "";
     public static final String DEFAULT_WEBAPP_LOGO_CONTAINER_CSS = "";
     public static final String DEFAULT_WEBAPP_FAVICON = "libs/theme/assets/images/favicon.ico";
-    public static final String DEFAULT_WEBAPP_TITLE = "WSO2 Open Healthcare";
+    public static final String DEFAULT_WEBAPP_TITLE = "WSO2 Healthcare";
     public static final String DEFAULT_WEBAPP_FOOTER =
-            "WSO2 Open Healthcare | &copy; " + Calendar.getInstance().get(Calendar.YEAR);
+            "WSO2 Healthcare";
     public static final String DEFAULT_WEBAPP_FOOTER_SECONDARY_HTML = "";
     public static final String DEFAULT_WEBAPP_MAIN_COLOR = "#342382";
     public static final String DEFAULT_AUTH_SELFSIGNUP_URL = "";

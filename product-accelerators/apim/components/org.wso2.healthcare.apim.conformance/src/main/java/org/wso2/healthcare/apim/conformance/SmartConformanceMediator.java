@@ -18,7 +18,6 @@
 
 package org.wso2.healthcare.apim.conformance;
 
-import com.google.gson.JsonObject;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.util.AXIOMUtil;
 import org.apache.axis2.AxisFault;
@@ -32,7 +31,6 @@ import org.hl7.fhir.r4.model.OperationOutcome;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.wso2.healthcare.apim.conformance.internal.ConformanceDataHolder;
 
 import javax.xml.stream.XMLStreamException;
 import java.util.List;
@@ -52,7 +50,7 @@ public class SmartConformanceMediator extends AbstractMediator {
             log.debug("SmartConformanceMediator Started");
         }
         String tenant = mc.getProperty(Constants.TENANT_INFO_DOMAIN).toString();
-        JSONObject resource = createWellKnownURIPayload(tenant, mc);
+        JSONObject resource = createWellKnownURIPayload(tenant);
         if (mc instanceof Axis2MessageContext) {
             org.apache.axis2.context.MessageContext axisMsgCtx =
                     ((Axis2MessageContext) mc).getAxis2MessageContext();
@@ -103,21 +101,16 @@ public class SmartConformanceMediator extends AbstractMediator {
         return true;
     }
 
-    public JSONObject createWellKnownURIPayload(String tenant, MessageContext mc) {
+    public JSONObject createWellKnownURIPayload(String tenant) {
 
-        JsonObject wellKnownResponse;
-        if (ConformanceDataHolder.getInstance().getWellKnownResponse() != null) {
-            wellKnownResponse = ConformanceDataHolder.getInstance().getWellKnownResponse();
-        } else {
-            wellKnownResponse = Util.getWellKnownResponse(mc);
-            ConformanceDataHolder.getInstance().setWellKnownResponse(wellKnownResponse);
-        }
-
+        log.info("Creating SMART well-known URI payload for tenant: " + tenant);
         JSONObject wellKnownURIDocument = new JSONObject();
         JSONArray authMethods = new JSONArray(Constants.SMART_AUTH_METHODS);
         JSONArray scopesSupported = new JSONArray(Constants.SMART_SCOPES_SUPPORTED);
         JSONArray responseTypes = new JSONArray(Constants.SMART_RESPONSE_TYPES);
         JSONArray capabilities = new JSONArray(Constants.SMART_CAPABILITIES);
+        JSONArray codeChallengeMethods = new JSONArray().put(Util.getSignatureAlgorithm().contains(
+                "SHA256") ? "S256" : "");
         List<String> supportedGrantTypes = Util.getSupportedGrantTypes(tenant);
         JSONArray grantTypes = new JSONArray();
         if (supportedGrantTypes.contains(Constants.GRANT_TYPE_AUTH_CODE)) {
@@ -129,22 +122,25 @@ public class SmartConformanceMediator extends AbstractMediator {
             grantTypes.put(Constants.GRANT_TYPE_CLIENT_CREDENTIALS);
         }
         try {
-            wellKnownURIDocument.put("authorization_endpoint", wellKnownResponse.get("authorization_endpoint").getAsString());
-            wellKnownURIDocument.put("token_endpoint", wellKnownResponse.get("token_endpoint").getAsString());
+            wellKnownURIDocument.put("authorization_endpoint", Util.getKeyManagerProperty(tenant, 0,
+                    "authorize_endpoint"));
+            wellKnownURIDocument.put("token_endpoint", Util.getKeyManagerProperty(tenant, 0, "token_endpoint"));
+            wellKnownURIDocument.put("introspection_endpoint", Util.getKeyManagerProperty(tenant, 0, "introspection_endpoint"));
             wellKnownURIDocument.put("token_endpoint_auth_methods_supported", authMethods);
             wellKnownURIDocument.put("scopes_supported", scopesSupported);
             wellKnownURIDocument.put("response_types_supported", responseTypes);
-            wellKnownURIDocument.put("revocation_endpoint", wellKnownResponse.get("revocation_endpoint").getAsString());
+            wellKnownURIDocument.put("revocation_endpoint", Util.getKeyManagerProperty(tenant, 0,
+                    "revoke_endpoint"));
             wellKnownURIDocument.put("capabilities", capabilities);
             wellKnownURIDocument.put(Constants.SMART_GRANT_TYPES, grantTypes);
-            wellKnownURIDocument.put(Constants.SMART_CODE_CHALLENGE_METHODS, Util.getSignatureAlgorithm().contains(
-                    "SHA256") ? "S256" : "");
+            wellKnownURIDocument.put(Constants.SMART_CODE_CHALLENGE_METHODS, codeChallengeMethods);
             //the following attributes are required if the server supports sso-openid-connect capability.
-            wellKnownURIDocument.put(Constants.SMART_JWKS_URI, Util.getKeyManagerProperty(tenant, 0,
+            wellKnownURIDocument.put("jwks_uri", Util.getKeyManagerProperty(tenant, 0,
                     "certificate_value"));
-            wellKnownURIDocument.put(Constants.SMART_OAUTH_ISSUER, Util.getKeyManagerProperty(tenant, 0, "issuer"));
+            wellKnownURIDocument.put("issuer", Util.getKeyManagerProperty(tenant, 0, "issuer"));
         } catch (JSONException e) {
-            throw new ConformanceMediatorException("Error occurred while creating the SMART config payload");
+            log.error("Error occurred while creating the SMART config payload: " + e.getMessage());
+            throw new ConformanceMediatorException("Error occurred while creating the SMART config payload", e);
         }
         return wellKnownURIDocument;
     }

@@ -16,11 +16,44 @@
 # merge.sh script copy the WSO2 OH APIM accelerator artifacts on top of WSO2 APIM base product
 #
 # merge.sh <WSO2_OH_APIM_HOME>
+# merge.sh -Dprofile=<gateway-worker or control-plane> <WSO2_OH_APIM_HOME>
+# merge.sh <WSO2_OH_APIM_HOME> -Dprofile=<gateway-worker or control-plane>
 
-WSO2_OH_APIM_HOME=$1
+# Initialize variables
+PROFILE=""
+WSO2_OH_APIM_HOME=""
 
 # resolve links - $0 may be a softlink
 PRG="$0"
+
+
+# Parse arguments
+for arg in "$@"; do
+  case $arg in
+    -Dprofile=*)
+      PROFILE="${arg#*=}"
+      if [[ "$PROFILE" != "gateway-worker" && "$PROFILE" != "control-plane" && "$PROFILE" != "traffic-manager" && "$PROFILE" != "api-key-manager-node" ]]; then
+        echo -e "[ERROR] Invalid value for -Dprofile. Allowed values are 'gateway-worker', 'control-plane', 'traffic-manager' or 'api-key-manager-node'."
+        exit 1
+      fi
+      ;;
+    *)
+      if [ -z "$WSO2_OH_APIM_HOME" ]; then
+        WSO2_OH_APIM_HOME="$arg"
+      else
+        echo -e "[ERROR] Unknown argument: $arg"
+        exit 1
+      fi
+      ;;
+  esac
+done
+
+# Log the selected profile
+if [[ -n "$PROFILE" ]]; then
+  echo -e "[INFO] Profile selected: $PROFILE"
+else
+  echo -e "[INFO] No profile selected. Proceeding with default behavior."
+fi
 
 while [ -h "$PRG" ]; do
   ls=$(ls -ld "$PRG")
@@ -91,15 +124,120 @@ else
   echo -e "[INFO] Backup files already exist in the audit folder"
 fi
 
+
+# Reusable functions
+
+configure_message_handlers() {
+    local config_file="${WSO2_OH_APIM_HOME}/repository/conf/deployment.toml"
+
+    # Configure XML formatter
+    MATCH_FOUND=$(sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_formatters\]\](.*)content_type = \"application\/fhir\+xml\"/fhir-xml-formatter-found/g' "$config_file")
+    if grep -q "fhir-xml-formatter-found" <<< "$MATCH_FOUND"; then
+        sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_formatters\]\](.*)content_type = \"application\/fhir\+xml\"/\[\[custom_message_formatters\]\]\nclass = \"org.apache.axis2.transport.http.ApplicationXMLFormatter\"\ncontent_type = \"application\/fhir\+xml\"/g' "$config_file" > "${config_file}.bak.1"
+        sed '1{/^$/d;}' "${config_file}.bak.1" > "${config_file}.bak.2"
+        mv "${config_file}.bak.2" "$config_file"
+        rm "${config_file}.bak.1"
+    else
+        echo -e "\n[[custom_message_formatters]]\nclass = \"org.apache.axis2.transport.http.ApplicationXMLFormatter\"\ncontent_type = \"application/fhir+xml\"" | tee -a "$config_file" >/dev/null
+    fi
+
+    # Configure XML builder
+    MATCH_FOUND=$(sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_builders\]\](.*)content_type = \"application\/fhir\+xml\"/fhir-xml-builder-found/g' "$config_file")
+    if grep -q "fhir-xml-builder-found" <<< "$MATCH_FOUND"; then
+        sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_builders\]\](.*)content_type = \"application\/fhir\+xml\"/\[\[custom_message_builders\]\]\nclass = \"org.apache.axis2.builder.ApplicationXMLBuilder\"\ncontent_type = \"application\/fhir\+xml\"/g' "$config_file" > "${config_file}.bak.1"
+        sed '1{/^$/d;}' "${config_file}.bak.1" > "${config_file}.bak.2"
+        mv "${config_file}.bak.2" "$config_file"
+        rm "${config_file}.bak.1"
+    else
+        echo -e "\n[[custom_message_builders]]\nclass = \"org.apache.axis2.builder.ApplicationXMLBuilder\"\ncontent_type = \"application/fhir+xml\"" | tee -a "$config_file" >/dev/null
+    fi
+
+    # Configure JSON formatter
+    MATCH_FOUND=$(sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_formatters\]\](.*)content_type = \"application\/fhir\+json\"/fhir-json-formatter-found/g' "$config_file")
+    if grep -q "fhir-json-formatter-found" <<< "$MATCH_FOUND"; then
+        sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_formatters\]\](.*)content_type = \"application\/fhir\+json\"/\[\[custom_message_formatters\]\]\nclass = \"org.apache.synapse.commons.json.JsonStreamFormatter\"\ncontent_type = \"application\/fhir\+json\"/g' "$config_file" > "${config_file}.bak.1"
+        sed '1{/^$/d;}' "${config_file}.bak.1" > "${config_file}.bak.2"
+        mv "${config_file}.bak.2" "$config_file"
+        rm "${config_file}.bak.1"
+    else
+        echo -e "\n[[custom_message_formatters]]\nclass = \"org.apache.synapse.commons.json.JsonStreamFormatter\"\ncontent_type = \"application/fhir+json\"" | tee -a "$config_file" >/dev/null
+    fi
+
+    # Configure JSON builder
+    MATCH_FOUND=$(sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_builders\]\](.*)content_type = \"application\/fhir\+json\"/fhir-json-builder-found/g' "$config_file")
+    if grep -q "fhir-json-builder-found" <<< "$MATCH_FOUND"; then
+        sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_builders\]\](.*)content_type = \"application\/fhir\+json\"/\[\[custom_message_builders\]\]\nclass = \"org.apache.synapse.commons.json.JsonStreamBuilder\"\ncontent_type = \"application\/fhir\+json\"/g' "$config_file" > "${config_file}.bak.1"
+        sed '1{/^$/d;}' "${config_file}.bak.1" > "${config_file}.bak.2"
+        mv "${config_file}.bak.2" "$config_file"
+        rm "${config_file}.bak.1"
+    else
+        echo -e "\n[[custom_message_builders]]\nclass = \"org.apache.synapse.commons.json.JsonStreamBuilder\"\ncontent_type = \"application/fhir+json\"" | tee -a "$config_file" >/dev/null
+    fi
+}
+
+configure_claims_and_scopes() {
+    local claim_config="${WSO2_OH_APIM_HOME}/repository/conf/claim-config.xml"
+    local oidc_scope_config="${WSO2_OH_APIM_HOME}/repository/conf/identity/oidc-scope-config.xml"
+
+    echo -e "[INFO] Adding configurations to claim-config.xml file"
+
+    # Configure local claim
+    local patient_id_claim="\t<Dialect dialectURI=\"http://wso2.org/claims\">\n<Claim>\n<ClaimURI>http://wso2.org/claims/patientId</ClaimURI>\n<DisplayName>Patient ID</DisplayName>\n<AttributeID>patientId</AttributeID>\n<Description>PatientID</Description>\n<DisplayOrder>13</DisplayOrder>\n<SupportedByDefault />\n</Claim>\n"
+    if grep -Fq '<ClaimURI>http://wso2.org/claims/patientId</ClaimURI>' "$claim_config"; then
+        echo -e "[WARN] PatientId local claim configuration already exist"
+    else
+        sed -i -e "s|<Dialect dialectURI=\"http://wso2.org/claims\">|${patient_id_claim}|g" "$claim_config"
+    fi
+
+    # Configure OIDC claim
+    local patient_id_oidc_claim="\t<Dialect dialectURI=\"http://wso2.org/oidc/claim\">\n<Claim>\n<ClaimURI>patientId</ClaimURI>\n<DisplayName>Patient ID</DisplayName>\n<AttributeID>patientId</AttributeID>\n<Description>PatientID</Description>\n<DisplayOrder>13</DisplayOrder>\n<MappedLocalClaim>http://wso2.org/claims/patientId</MappedLocalClaim>\n</Claim>\n"
+    if grep -Fq '<MappedLocalClaim>http://wso2.org/claims/patientId</MappedLocalClaim>' "$claim_config"; then
+        echo -e "[WARN] PatientId OIDC claim configuration already exist"
+    else
+        sed -i -e "s|<Dialect dialectURI=\"http://wso2.org/oidc/claim\">|${patient_id_oidc_claim}|g" "$claim_config"
+    fi
+
+    echo -e "[INFO] Adding configurations to repository/conf/identity/oidc-scope-config.xml file"
+
+    # Configure OIDC scopes using separate variables instead of an array
+    local fhiruser_scope="<Scopes>\n\t<Scope id=\"fhirUser\">\n\t\t<Claim>patientId</Claim>\n\t</Scope>\n"
+    local launch_patient_scope="<Scopes>\n\t<Scope id=\"launch\/patient\">\n\t\t<Claim>patientId</Claim>\n\t</Scope>\n"
+    local offline_access_scope="<Scopes>\n\t<Scope id=\"offline_access\">\n\t\t<Claim>patientId</Claim>\n\t</Scope>\n"
+
+    # Configure fhirUser scope
+    if grep -Fq '<Scope id="fhirUser">' "$oidc_scope_config"; then
+        echo -e "[WARN] fhirUser scope configuration already exist"
+    else
+        sed -i -e "s|<Scopes>|${fhiruser_scope}|g" "$oidc_scope_config"
+    fi
+
+    # Configure launch/patient scope
+    if grep -Fq '<Scope id="launch/patient">' "$oidc_scope_config"; then
+        echo -e "[WARN] launch/patient scope configuration already exist"
+    else
+        sed -i -e "s|<Scopes>|${launch_patient_scope}|g" "$oidc_scope_config"
+    fi
+
+    # Configure offline_access scope
+    if grep -Fq '<Scope id="offline_access">' "$oidc_scope_config"; then
+        echo -e "[WARN] offline_access scope configuration already exist"
+    else
+        sed -i -e "s|<Scopes>|${offline_access_scope}|g" "$oidc_scope_config"
+    fi
+}
+
 echo -e "[INFO] Copying Open Healthcare artifacts.."
 # adding the OH artifacts to the product pack
 cp -R "${ACCELERATOR_HOME}"/carbon-home/repository/components/* "${WSO2_OH_APIM_HOME}"/repository/components
 cp -R "${ACCELERATOR_HOME}"/carbon-home/repository/resources/* "${WSO2_OH_APIM_HOME}"/repository/resources
 cp -R "${ACCELERATOR_HOME}"/carbon-home/repository/deployment/server/synapse-configs/* "${WSO2_OH_APIM_HOME}"/repository/deployment/server/synapse-configs
 if [ "${healthcare_theme_enabled}" == "true" ]; then
-  cp -R "${ACCELERATOR_HOME}"/carbon-home/repository/deployment/server/webapps/* "${WSO2_OH_APIM_HOME}"/repository/deployment/server/webapps/
+  cp -R "${ACCELERATOR_HOME}"/carbon-home/repository/resources/extensions/* "${WSO2_OH_APIM_HOME}"/repository/resources/extensions/
 else
-  cp -R "${WSO2_OH_ACCELERATOR_AUDIT_BACKUP}"/webapps/* "${WSO2_OH_APIM_HOME}"/repository/deployment/server/webapps/
+  ## remove extensions related to healthcare theme
+  find "${WSO2_OH_APIM_HOME}/repository/resources" -maxdepth 1 -type d -name "extensions*" -exec rm -r {} \;
+  find "${WSO2_OH_APIM_HOME}/repository/deployment/server/webapps/accountrecoveryendpoint/extensions" -mindepth 1 -exec rm -r {} \;
+  find "${WSO2_OH_APIM_HOME}/repository/deployment/server/webapps/authenticationendpoint/extensions" -mindepth 1 -exec rm -r {} \;
 fi
 
 if [ "${metadata_ep_enabled}" == "false" ]; then
@@ -125,7 +263,7 @@ then
     echo -e "[WARN] healthcare.fhir configuration already exist"
 else
     # code if not found
-    echo -e "\n[healthcare.fhir]\nserver_name = \"WSO2 Open Healthcare\"\nserver_version = \"1.2.0\""  | tee -a "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml >/dev/null
+    echo -e "\n[healthcare.fhir]\nserver_name = \"WSO2 Open Healthcare\"\nserver_version = \"1.2.0\"\n## The time when the capability statement was published. It should be given in the format of yyyy-MM-dd'T'HH:mm:ss.SSS'Z. If not provided the server start time is taken by default.\n#server_metadata_published_time = \"2025-01-06T14:45:30.123Z\""  | tee -a "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml >/dev/null
 fi
 
 if grep -Fxq "[apim.jwt]" "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml
@@ -157,10 +295,24 @@ if [ "${smart_on_fhir_enabled}" == "true" ]; then
   fi
 
   if grep -Fxq "[oauth]" "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml
-  then
-      # code if found
-      echo -e "[WARN] oauth configuration already exist"
-  fi
+    then
+        # code if found
+        echo -e "[WARN] oauth configuration already exist"
+    else
+        # code if not found
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS (BSD sed)
+              sed -i '' '/\[oauth\.grant_type\.token_exchange\]/i\
+[oauth]\
+show_display_name_in_consent_page = true\
+
+  ' "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml
+        else
+            # Linux (GNU sed)
+            sed -i '/\[oauth\.grant_type\.token_exchange\]/i [oauth]\nshow_display_name_in_consent_page = true' "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml
+        fi
+        echo -e "[INFO] Added [oauth] configuration above [oauth.grant_type.token_exchange]"
+    fi
 
   if grep -Fxq "[oauth.grant_type.authorization_code]" "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml
   then
@@ -229,6 +381,16 @@ if [ "${smart_on_fhir_enabled}" == "true" ]; then
       echo -e "\n#[healthcare.identity.claims]\n#patient_id_claim_uri = \"http://wso2.org/claims/patientId\"\n#patient_id_key = \"patientId\"\n#fhirUser_resource_url_context = \"/r4/Patient\"\n#fhirUser_resource_id_claim_uri = \"http://wso2.org/claims/patientId\""  | tee -a "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml >/dev/null
   fi
 
+  if grep -Fxq "#[[healthcare.backend.auth]]" "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml || grep -Fxq "[[healthcare.backend.auth]]" "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml
+    then
+        # code if found
+        echo -e "[WARN] healthcare.backend.auth configuration already exist"
+    else
+        # code if not found
+        echo -e "\n#[[healthcare.backend.auth]]\n## Name of the authentication method. This name must be matched with the Config Name policy attribute in the -\n##  - Replace Backend Auth Token policy.\n#name = \"epic_pkjwt\"\n## Authentication type. Only pkjwt and client_credentials are supported atm.\n#auth_type = \"pkjwt\"\n## External Auth server's Token endpoint URL.\n#token_endpoint = \"https://localhost:9443/oauth2/token\"\n#client_id = \"client_id\"\n#private_key_alias = \"key_alias\"
+     \n#[[healthcare.backend.auth]]\n#name = \"epic_client_credentials\"\n#auth_type = \"client_credentials\"\n#token_endpoint = \"https://localhost:9443/oauth2/token\"\n#client_id = \"client_id\"\n#client_secret = \"client_secret\""  | tee -a "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml >/dev/null
+    fi
+
   if grep -Fxq "#[healthcare.identity.claim.mgt]" "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml || grep -Fxq "[healthcare.identity.claim.mgt]" "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml
   then
       # code if found
@@ -276,13 +438,32 @@ if [ "${healthcare_theme_enabled}" == "true" ]; then
   fi
 fi
 
-if grep -Fxq "#[apim.sync_runtime_artifacts.gateway.skip_list]" "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml || grep -Fxq "[apim.sync_runtime_artifacts.gateway.skip_list]" "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml
-then
-    # code if found
-    echo -e "[WARN] apim.sync_runtime_artifacts.gateway.skip_list already exist"
+# Check if the section already exists
+if grep -Fxq "#[apim.sync_runtime_artifacts.gateway.skip_list]" "${WSO2_OH_APIM_HOME}/repository/conf/deployment.toml" || \
+   grep -Fxq "[apim.sync_runtime_artifacts.gateway.skip_list]" "${WSO2_OH_APIM_HOME}/repository/conf/deployment.toml"; then
+    echo -e "[WARN] apim.sync_runtime_artifacts.gateway.skip_list already exists"
 else
-    # code if not found
-    echo -e "\n[apim.sync_runtime_artifacts.gateway.skip_list]\napis = [\"_MetadataAPI_.xml\",\"_WellKnownResourceAPI_.xml\"]" | tee -a "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml >/dev/null
+    # Initialize the list
+    SKIP_LIST=""
+
+    # Conditionally add entries
+    if [ "$metadata_ep_enabled" = true ]; then
+        SKIP_LIST="\"_MetadataAPI_.xml\""
+    fi
+
+    if [ "$well_known_ep_enabled" = true ]; then
+        # Add comma if SKIP_LIST already has an item
+        if [ -n "$SKIP_LIST" ]; then
+            SKIP_LIST="$SKIP_LIST, "
+        fi
+        SKIP_LIST="${SKIP_LIST}\"_WellKnownResourceAPI_.xml\""
+    fi
+
+    # Only write the section if at least one item is added
+    if [ -n "$SKIP_LIST" ]; then
+        echo -e "\n[apim.sync_runtime_artifacts.gateway.skip_list]\napis = [${SKIP_LIST}]" | \
+            tee -a "${WSO2_OH_APIM_HOME}/repository/conf/deployment.toml" >/dev/null
+    fi
 fi
 
 if grep -Fxq "id = \"private_key_jwt_authenticator\"" "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml || grep -Fxq "#id = \"private_key_jwt_authenticator\"" "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml
@@ -312,134 +493,79 @@ else
     echo -e "\n#[[healthcare.notification.mail]]\n#name = \"new_user_signup_requested_internal\"\n#enable = true\n#recipient_roles = \"approver,approver2\"\n#recipients = \"user1@test.com,user2@test.com\"\n#email_subject = \"[Developer Portal]  New User Signup - \${first_name} \${last_name}\"\n#email_body = \"<html><body>A new user has signed up at \${time} [\${timezone}] on \${date}. Visit the <a href=\\\"\${server_url}/admin/tasks/user-creation/\\\">admin portal</a> to approve/reject.</body></html>\"\n\n#[[healthcare.notification.mail]]\n#name = \"new_user_signup_completed_internal\"\n#enable = true\n#recipient_roles = \"approver,approver2\"\n#recipients = \"user1@test.com,user2@test.com\"\n#email_subject = \"[Developer Portal]  New User Signup - \${first_name} \${last_name}\"\n#email_body = \"<html><body>Signup request has been \${status} by \${approver}.</body></html>\"\n\n#[[healthcare.notification.mail]]\n#name = \"new_user_signup_completed_external\"\n#enable = true\n#email_subject = \"[\${org_name} Developer Portal] Your Signup Request Status\"\n#email_body = \"<html><body>Your signup request has been \${status}. Please email \${contact_email} if you have any questions.<br/>Thank you for your interest.<br/></body></html>\"\n\n#[[healthcare.notification.mail]]\n#name = \"new_app_creation_requested_internal\"\n#enable = true\n#recipient_roles = \"approver,approver2\"\n#recipients = \"user1@test.com,user2@test.com\"\n#email_subject = \"[Developer Portal] New Application \${app_name} Created by \${user_name}\"\n#email_body = \"<html><body>A new application has been created. Visit the <a href=\\\"\${server_url}/admin/tasks/application-creation/\\\">admin portal</a> to approve/reject.</body></html>\"\n\n#[[healthcare.notification.mail]]\n#name = \"new_app_creation_completed_internal\"\n#enable = true\n#recipient_roles = \"approver,approver2\"\n#recipients = \"user1@test.com,user2@test.com\"\n#email_subject = \"[Developer Portal] New Application \${app_name} Created by \${user_name}\"\n#email_body = \"<html><body>Application creation request has been \${status} by \${approver}.</body></html>\"\n\n#[[healthcare.notification.mail]]\n#name = \"new_app_creation_completed_external\"\n#enable = true\n#email_subject = \"[\${org_name} Developer Portal] Your Application Creation Request Status\"\n#email_body = \"<html><body>Your request to create the application \${app_name} has been \${status}. Please email \${contact_email} if you have any questions.<br/>Thank you for your interest.<br/></body></html>\""  | tee -a "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml >/dev/null
 fi
 
-MATCH_FOUND=$(sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_formatters\]\](.*)content_type = \"application\/fhir\+xml\"/fhir-xml-formatter-found/g' "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml)
+if [[ "$PROFILE" == "control-plane"  || "$PROFILE" == "traffic-manager" || "$PROFILE" == "api-key-manager-node" ]]; then
+  # control-plane specific logic
 
-# checking whether there's any entry for application/fhir+xml formatter
-if grep -q "fhir-xml-formatter-found" <<< "$MATCH_FOUND";
-then
-  # if so, we need to replace those entries if they are related to OH message formatters - here we are using a multiline sed matching operation
-	sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_formatters\]\](.*)content_type = \"application\/fhir\+xml\"/\[\[custom_message_formatters\]\]\nclass = \"org.apache.axis2.transport.http.ApplicationXMLFormatter\"\ncontent_type = \"application\/fhir\+xml\"/g' "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml > "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.1
+  echo -e "[INFO] Removing specific message formatters and builders for $PROFILE profile."
+  # Remove the ApplicationXMLFormatter for application/fhir+xml
+  sed -i.bak '/\[\[custom_message_formatters\]\]/,/content_type = "application\/fhir\+xml"/d' "${WSO2_OH_APIM_HOME}/repository/conf/deployment.toml"
+  # Remove the ApplicationXMLBuilder for application/fhir+xml
+  sed -i.bak '/\[\[custom_message_builders\]\]/,/content_type = "application\/fhir\+xml"/d' "${WSO2_OH_APIM_HOME}/repository/conf/deployment.toml"
+  # Remove the JsonStreamFormatter for application/fhir+json
+  sed -i.bak '/\[\[custom_message_formatters\]\]/,/content_type = "application\/fhir\+json"/d' "${WSO2_OH_APIM_HOME}/repository/conf/deployment.toml"
+  # Remove the JsonStreamBuilder for application/fhir+json
+  sed -i.bak '/\[\[custom_message_builders\]\]/,/content_type = "application\/fhir\+json"/d' "${WSO2_OH_APIM_HOME}/repository/conf/deployment.toml"
+  # Clean up backup file created by sed
+  rm -f "${WSO2_OH_APIM_HOME}/repository/conf/deployment.toml.bak"
+  echo -e "[INFO] Removed message formatters and builders for $PROFILE profile."
 
-  # above multiline sed operation add an empty line at the begining of the file. Below command will remove that unnecessary line
-	sed '1{/^$/d;}' "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.1 > "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.2
-  # replace the deployment.toml with the changed one
-  mv "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.2 "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml
-  # clean up
-  rm "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.1
-else
-  # adds the fhir+xml specific message formatter
-  echo -e "\n[[custom_message_formatters]]\nclass = \"org.apache.axis2.transport.http.ApplicationXMLFormatter\"\ncontent_type = \"application/fhir+xml\""  | tee -a "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml >/dev/null
-fi
+  echo -e "[INFO] Applying configurations for Claims and Scopes."
+  configure_claims_and_scopes
 
-MATCH_FOUND=$(sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_builders\]\](.*)content_type = \"application\/fhir\+xml\"/fhir-xml-builder-found/g' "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml)
+elif [[ "$PROFILE" == "gateway-worker" ]]; then
+  # gateway-worker specific logic
 
-# checking whether there's any entry for application/fhir+xml builder
-if grep -q "fhir-xml-builder-found" <<< "$MATCH_FOUND";
-then
-  # if so, we need to replace those entries if they are related to OH message builders - here we are using a multiline sed matching operation
-	sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_builders\]\](.*)content_type = \"application\/fhir\+xml\"/\[\[custom_message_builders\]\]\nclass = \"org.apache.axis2.builder.ApplicationXMLBuilder\"\ncontent_type = \"application\/fhir\+xml\"/g' "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml > "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.1
+  echo -e "[INFO] Removing specific scopes from oidc-scope-config.xml for gateway-worker profile."
+  # Define the file path
+  OIDC_SCOPE_CONFIG_FILE="${WSO2_OH_APIM_HOME}/repository/conf/identity/oidc-scope-config.xml"
+  # Remove the <Scope id="offline_access"> block
+  sed -i.bak '/<Scope id="offline_access">/,/<\/Scope>/d' "$OIDC_SCOPE_CONFIG_FILE"
+  # Remove the <Scope id="launch/patient"> block
+  sed -i.bak '/<Scope id="launch\/patient">/,/<\/Scope>/d' "$OIDC_SCOPE_CONFIG_FILE"
+  # Remove the <Scope id="fhirUser"> block
+  sed -i.bak '/<Scope id="fhirUser">/,/<\/Scope>/d' "$OIDC_SCOPE_CONFIG_FILE"
+  # Clean up the backup file created by sed
+  rm -f "${OIDC_SCOPE_CONFIG_FILE}.bak"
+  echo -e "[INFO] Removed specific scopes from oidc-scope-config.xml for gateway-worker profile."
 
-  # above multiline sed operation add an empty line at the begining of the file. Below command will remove that unnecessary line
-	sed '1{/^$/d;}' "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.1 > "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.2
-  # replace the deployment.toml with the changed one
-  mv "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.2 "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml
-  # clean up
-  rm "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.1
-else
-  # adds the fhir+xml specific message builder
-  echo -e "\n[[custom_message_builders]]\nclass = \"org.apache.axis2.builder.ApplicationXMLBuilder\"\ncontent_type = \"application/fhir+xml\""  | tee -a "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml >/dev/null
-fi
+  echo -e "[INFO] Removing patientId claim configuration for gateway-worker profile."
+  # Define the file path
+  CLAIM_CONFIG_FILE="${WSO2_OH_APIM_HOME}/repository/conf/claim-config.xml"
+  # Remove the patientId claim block including the opening <Claim> tag
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS version
+        sed -i '' '/<Claim>/{
+            :a
+            N
+            /<\/Claim>/!ba
+            /<ClaimURI>http:\/\/wso2.org\/claims\/patientId<\/ClaimURI>/d
+        }' "$CLAIM_CONFIG_FILE"
+    else
+        # Linux version
+        sed -i '/<Claim>/{
+            :a
+            N
+            /<\/Claim>/!ba
+            /<ClaimURI>http:\/\/wso2.org\/claims\/patientId<\/ClaimURI>/d
+        }' "$CLAIM_CONFIG_FILE"
+    fi
+  # Clean up backup file created by sed
+  rm -f "${CLAIM_CONFIG_FILE}.bak"
+  echo -e "[INFO] Removed patientId claim configuration for gateway-worker profile."
 
-MATCH_FOUND=$(sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_formatters\]\](.*)content_type = \"application\/fhir\+json\"/fhir-json-formatter-found/g' "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml)
+  ## Calling reusable function to configure message handlers
+  echo -e "[INFO] Configuring Message Handlers."
+  configure_message_handlers
 
-# checking whether there's any entry for application/fhir+json formatter
-if grep -q "fhir-json-formatter-found" <<< "$MATCH_FOUND";
-then
-  # if so, we need to replace those entries if they are related to OH message formatters - here we are using a multiline sed matching operation
-	sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_formatters\]\](.*)content_type = \"application\/fhir\+json\"/\[\[custom_message_formatters\]\]\nclass = \"org.apache.synapse.commons.json.JsonStreamFormatter\"\ncontent_type = \"application\/fhir\+json\"/g ' "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml > "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.1
+elif [[ -z "$PROFILE" ]]; then
 
-  # above multiline sed operation add an empty line at the begining of the file. Below command will remove that unnecessary line
-	sed '1{/^$/d;}' "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.1 > "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.2
-  # replace the deployment.toml with the changed one
-  mv "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.2 "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml
-  # clean up
-  rm "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.1
-else
-  # adds the fhir+json specific message formatter
-  echo -e "\n[[custom_message_formatters]]\nclass = \"org.apache.synapse.commons.json.JsonStreamFormatter\"\ncontent_type = \"application/fhir+json\""  | tee -a "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml >/dev/null
-fi
+  echo -e "[INFO] Applying configurations for Claims and Scopes."
+  ## Calling reusable function to configure message handlers
+  configure_claims_and_scopes
+  ## Calling reusable function to configure message handlers
+  echo -e "[INFO] Configuring Message Handlers."
+  configure_message_handlers
 
-MATCH_FOUND=$(sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_builders\]\](.*)content_type = \"application\/fhir\+json\"/fhir-json-builder-found/g' "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml)
-
-# checking whether there's any entry for application/fhir+json builder
-if grep -q "fhir-json-builder-found" <<< "$MATCH_FOUND";
-then
-  # if so, we need to replace those entries if they are related to OH message builders - here we are using a multiline sed matching operation
-	sed -E '/./{H;$!d;} ; x ; s/\[\[custom_message_builders\]\](.*)content_type = \"application\/fhir\+json\"/\[\[custom_message_builders\]\]\nclass = \"org.apache.synapse.commons.json.JsonStreamBuilder\"\ncontent_type = \"application\/fhir\+json\"/g' "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml > "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.1
-
-  # above multiline sed operation add an empty line at the begining of the file. Below command will remove that unnecessary line
-	sed '1{/^$/d;}' "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.1 > "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.2
-  # replace the deployment.toml with the changed one
-  mv "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.2 "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml
-  # clean up
-  rm "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml.bak.1
-else
-  # adds the fhir+json specific message builder
-  echo -e "\n[[custom_message_builders]]\nclass = \"org.apache.synapse.commons.json.JsonStreamBuilder\"\ncontent_type = \"application/fhir+json\""  | tee -a "${WSO2_OH_APIM_HOME}"/repository/conf/deployment.toml >/dev/null
-fi
-
-
-# adding configurations to claim-config.xml
-echo -e "[INFO] Adding configurations to repository/conf/claim-config.xml file"
-
-PATIENT_ID_CLAIM="\t<Dialect dialectURI=\"http://wso2.org/claims\">\n<Claim>\n<ClaimURI>http://wso2.org/claims/patientId</ClaimURI>\n<DisplayName>Patient ID</DisplayName>\n<AttributeID>patientId</AttributeID>\n<Description>PatientID</Description>\n<DisplayOrder>13</DisplayOrder>\n<SupportedByDefault />\n</Claim>\n"
-if grep -Fq '<ClaimURI>http://wso2.org/claims/patientId</ClaimURI>' "${WSO2_OH_APIM_HOME}"/repository/conf/claim-config.xml
-then
-    # do nothing
-    echo -e "[WARN] PatientId local claim configuration already exist"
-else
-    sed -i -e "s|<Dialect dialectURI=\"http://wso2.org/claims\">|${PATIENT_ID_CLAIM}|g" "${WSO2_OH_APIM_HOME}"/repository/conf/claim-config.xml
-fi
-
-PATIENT_ID_OIDC_CLAIM="\t<Dialect dialectURI=\"http://wso2.org/oidc/claim\">\n<Claim>\n<ClaimURI>patientId</ClaimURI>\n<DisplayName>Patient ID</DisplayName>\n<AttributeID>patientId</AttributeID>\n<Description>PatientID</Description>\n<DisplayOrder>13</DisplayOrder>\n<MappedLocalClaim>http://wso2.org/claims/patientId</MappedLocalClaim>\n</Claim>\n"
-if grep -Fq '<MappedLocalClaim>http://wso2.org/claims/patientId</MappedLocalClaim>' "${WSO2_OH_APIM_HOME}"/repository/conf/claim-config.xml
-then
-    # do nothing
-    echo -e "[WARN] PatientId OIDC claim configuration already exist"
-else
-    sed -i -e "s|<Dialect dialectURI=\"http://wso2.org/oidc/claim\">|${PATIENT_ID_OIDC_CLAIM}|g" "${WSO2_OH_APIM_HOME}"/repository/conf/claim-config.xml
-fi
-
-# adding configurations to oidc-scope-config.xml
-echo -e "[INFO] Adding configurations to repository/conf/identity/oidc-scope-config.xml file"
-# adds fhirUser
-FHIRUSER_SCOPE="<Scopes>\n\t<Scope id=\"fhirUser\">\n\t\t<Claim>patientId</Claim>\n\t</Scope>\n"
-if grep -Fq '<Scope id="fhirUser">' "${WSO2_OH_APIM_HOME}"/repository/conf/identity/oidc-scope-config.xml
-then
-    # do nothing
-    echo -e "[WARN] fhirUser scope configuration already exist"
-else
-    sed -i -e "s|<Scopes>|${FHIRUSER_SCOPE}|g" "${WSO2_OH_APIM_HOME}"/repository/conf/identity/oidc-scope-config.xml
-fi
-
-# adds launch/patient
-LAUNCH_PATIENT_SCOPE="<Scopes>\n\t<Scope id=\"launch/patient\">\n\t\t<Claim>patientId</Claim>\n\t</Scope>\n"
-if grep -Fq '<Scope id="launch/patient">' "${WSO2_OH_APIM_HOME}"/repository/conf/identity/oidc-scope-config.xml
-then
-    # do nothing
-    echo -e "[WARN] launch/patient scope configuration already exist"
-else
-    sed -i -e "s|<Scopes>|${LAUNCH_PATIENT_SCOPE}|g" "${WSO2_OH_APIM_HOME}"/repository/conf/identity/oidc-scope-config.xml
-fi
-
-# adds offline_access
-OFFLINE_ACCESS_SCOPE="<Scopes>\n\t<Scope id=\"offline_access\">\n\t\t<Claim>patientId</Claim>\n\t</Scope>\n"
-if grep -Fq '<Scope id="offline_access">' "${WSO2_OH_APIM_HOME}"/repository/conf/identity/oidc-scope-config.xml
-then
-    # do nothing
-    echo -e "[WARN] offline_access scope configuration already exist"
-else
-    sed -i -e "s|<Scopes>|${OFFLINE_ACCESS_SCOPE}|g" "${WSO2_OH_APIM_HOME}"/repository/conf/identity/oidc-scope-config.xml
 fi
 
 echo -e "[INFO] WSO2 Open Healthcare APIM Accelerator is successfully applied"

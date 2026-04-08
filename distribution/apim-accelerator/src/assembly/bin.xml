@@ -59,8 +59,8 @@
             <outputDirectory>database</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>target/dist/update</directory>
-            <outputDirectory>update</outputDirectory>
+            <directory>target/dist/updates</directory>
+            <outputDirectory>updates</outputDirectory>
             <includes>
             <include>product.txt</include>
             </includes>
