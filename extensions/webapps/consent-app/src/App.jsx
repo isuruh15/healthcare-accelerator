@@ -20,6 +20,9 @@ import { useState, useEffect } from 'react';
 import ConsentPage from './ConsentPage';
 import PatientPickerPage from './PatientPickerPage';
 
+const { backendUrl = "", consentAuthorizeRedirectUrl = "https://localhost:9453/oauth2/authorize" } = window.__CONSENT_APP_CONFIG__ ?? {};
+const apiUrl = `${backendUrl}/api`;
+
 function readStoredPatient() {
   const stored = sessionStorage.getItem("selectedPatient");
   if (!stored) return null;
@@ -48,7 +51,7 @@ export default function App() {
       return;
     }
 
-    fetch(`/api/consent-context?sessionDataKeyConsent=${encodeURIComponent(sessionDataKeyConsent)}&spId=${encodeURIComponent(spId)}`)
+    fetch(`${apiUrl}/consent-context?sessionDataKeyConsent=${encodeURIComponent(sessionDataKeyConsent)}&spId=${encodeURIComponent(spId)}`)
       .then((r) => r.ok ? r.json() : r.text().then((msg) => Promise.reject(msg || r.statusText)))
       .then((data) => setConsentProps(data))
       .catch((err) => setConsentError(String(err)));
@@ -62,7 +65,7 @@ export default function App() {
       setPractitioner(false);
       return;
     }
-    fetch(`/api/me?userId=${encodeURIComponent(userId)}`)
+    fetch(`${apiUrl}/me?userId=${encodeURIComponent(userId)}`)
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((data) => setPractitioner(isPractitioner(data)))
       .catch(() => setPractitioner(false));
@@ -90,5 +93,5 @@ export default function App() {
   }
 
   const additionalContext = selectedPatient ? [JSON.stringify(selectedPatient)] : [];
-  return <ConsentPage {...consentProps} additionalContext={additionalContext} />;
+  return <ConsentPage {...consentProps} additionalContext={additionalContext} consentAuthorizeRedirectUrl={consentAuthorizeRedirectUrl} />;
 }

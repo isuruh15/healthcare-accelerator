@@ -18,6 +18,9 @@
 
 import { useState, useEffect } from "react";
 import AppBar from "@oxygen-ui/react/AppBar";
+
+const { backendUrl = "" } = window.__CONSENT_APP_CONFIG__ ?? {};
+const apiUrl = `${backendUrl}/api`;
 import Avatar from "@oxygen-ui/react/Avatar";
 import Box from "@oxygen-ui/react/Box";
 import Button from "@oxygen-ui/react/Button";
@@ -152,7 +155,7 @@ export default function PatientPickerPage({ onProceed, onCancel, sessionDataKeyC
   const [patientsError, setPatientsError] = useState(null);
 
   useEffect(() => {
-    const userPromise = fetch(`/api/me?userId=${encodeURIComponent(userId ?? "")}`)
+    const userPromise = fetch(`${apiUrl}/me?userId=${encodeURIComponent(userId ?? "")}`)
       .then((r) => {
         if (r.status === 400) throw new Error("User ID is missing or invalid.");
         if (r.status === 502) throw new Error("Could not reach the identity server to load user details.");
@@ -162,7 +165,7 @@ export default function PatientPickerPage({ onProceed, onCancel, sessionDataKeyC
       .then(mapScimUser)
       .catch((err) => { setUserError(err.message); return null; });
 
-    const patientsPromise = fetch("/api/patients")
+    const patientsPromise = fetch(`${apiUrl}/patients`)
       .then((r) => {
         if (r.status === 502) throw new Error("Could not reach the identity server to load patient list.");
         if (!r.ok) throw new Error(`Failed to load patient list (HTTP ${r.status}).`);

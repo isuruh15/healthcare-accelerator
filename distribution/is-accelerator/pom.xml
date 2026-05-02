@@ -168,10 +168,14 @@
                                             includes="**"/>
                                 </copy>
 
-                                <!--Add consent-app webapp-->
+                                <!--Add consent-app webapp (built dist + WEB-INF only)-->
                                 <copy todir="${product_home}/carbon-home/repository/deployment/server/webapps/consent-app">
-                                    <fileset dir="${basedir}/../../extensions/webapps/consent-app"
+                                    <fileset dir="${basedir}/../../extensions/webapps/consent-app/dist"
                                             includes="**"/>
+                                </copy>
+                                <copy todir="${product_home}/carbon-home/repository/deployment/server/webapps/consent-app/WEB-INF">
+                                    <fileset dir="${basedir}/../../extensions/webapps/consent-app/WEB-INF"
+                                            includes="web.xml"/>
                                 </copy>
 
                                 <copy todir="${product_home}">

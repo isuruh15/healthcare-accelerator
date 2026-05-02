@@ -19,6 +19,9 @@
 import { useState, useCallback } from "react";
 import "./ConsentPage.css";
 
+const { backendUrl = "" } = window.__CONSENT_APP_CONFIG__ ?? {};
+const storeScopesUrl = `${backendUrl}/store-scopes`;
+
 // ─── WSO2 Logo ────────────────────────────────────────────────────────────────
 function Wso2Logo() {
   return (
@@ -37,7 +40,7 @@ export default function ConsentPage({
   user,
   scopes = [],  
   mandatoryClaims = "",
-  consentAuthorizeRedirectUrl = "https://localhost:9443/oauth2/authorize",
+  consentAuthorizeRedirectUrl,
   additionalContext = [],
   onApprove,
   onDeny,
@@ -82,7 +85,7 @@ export default function ConsentPage({
 
   const storeScopes = async (scopesToStore) => {
     try {
-      await fetch("/store-scopes", {
+      await fetch(storeScopesUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

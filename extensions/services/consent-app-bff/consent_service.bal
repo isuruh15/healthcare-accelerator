@@ -15,7 +15,6 @@
 // under the License.
 
 import ballerina/http;
-import ballerina/io;
 import ballerina/log;
 import ballerina/url;
 import ballerinax/h2.driver as _;
@@ -23,6 +22,7 @@ import ballerinax/java.jdbc;
 
 configurable string hostname = "localhost";
 configurable int port = 9091;
+configurable string corsAllowedOrigin = "";
 configurable string consentContextApiBaseUrl = "https://localhost:9443";
 configurable string consentContextApiPath = "/api/identity/auth/v1.1/data/OauthConsentKey";
 configurable string consentContextApiUsername = "";
@@ -69,6 +69,7 @@ service / on consentListener {
             sessionDataKeyConsent,
             scopes: approvedScopes
         });
+        setCorsHeaders(response);
         return response;
     }
 
@@ -105,6 +106,7 @@ service / on consentListener {
         http:Response response = new;
         response.setHeader("Content-Type", "application/json");
         response.setPayload(responsePayload);
+        setCorsHeaders(response);
         return response;
     }
 
@@ -117,6 +119,7 @@ service / on consentListener {
         http:Response response = new;
         response.setHeader("Content-Type", "application/json");
         response.setPayload(patients);
+        setCorsHeaders(response);
         return response;
     }
 
@@ -134,37 +137,8 @@ service / on consentListener {
         http:Response response = new;
         response.setHeader("Content-Type", "application/json");
         response.setPayload(scimUser);
+        setCorsHeaders(response);
         return response;
-    }
-
-    // Serve Vite static assets (JS/CSS chunks)
-    resource function get assets/[string... parts](http:Caller caller) returns error? {
-        if parts.length() == 0 {
-            check caller->respond(buildTextResponse(404, "Asset not found"));
-            return;
-        }
-
-        string assetsBasePath = normalizePath(uiDistPath + "/assets");
-        string requestedRelativePath = string:'join("/", ...parts);
-        string candidatePath = normalizePath(assetsBasePath + "/" + requestedRelativePath);
-
-        boolean isWithinAssetsDir = candidatePath == assetsBasePath ||
-            candidatePath.startsWith(assetsBasePath + "/");
-        if !isWithinAssetsDir {
-            check caller->respond(buildTextResponse(404, "Asset not found"));
-            return;
-        }
-
-        byte[]|error content = io:fileReadBytes(candidatePath);
-        if content is error {
-            http:Response res = buildTextResponse(404, "Asset not found");
-            check caller->respond(res);
-            return;
-        }
-
-        http:Response response = new;
-        response.setBinaryPayload(content, getMimeType(parts[parts.length() - 1]));
-        check caller->respond(response);
     }
 
     resource function post consent(http:Request req) returns http:Response {
@@ -197,6 +171,7 @@ service / on consentListener {
             http:Response response = new;
             response.setHeader("Content-Type", "application/json");
             response.setPayload(result);
+            setCorsHeaders(response);
             return response;
         }
 
@@ -249,6 +224,7 @@ service / on consentListener {
         http:Response redirect = new;
         redirect.statusCode = 302;
         redirect.setHeader("Location", locationUri);
+        setCorsHeaders(redirect);
         return redirect;
     }
 }
@@ -564,10 +540,20 @@ function normalizePath(string inputPath) returns string {
     return normalizedPath == "" ? "." : normalizedPath;
 }
 
+function setCorsHeaders(http:Response res) {
+    if corsAllowedOrigin != "" {
+        res.setHeader("Access-Control-Allow-Origin", corsAllowedOrigin);
+        res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+    }
+}
+
 function buildTextResponse(int statusCode, string message) returns http:Response {
     http:Response res = new;
     res.statusCode = statusCode;
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setPayload(message);
+    setCorsHeaders(res);
     return res;
 }
