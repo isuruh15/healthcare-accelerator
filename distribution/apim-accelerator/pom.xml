@@ -144,10 +144,15 @@
                                         <include name="org.wso2.healthcare.apim.claim.mgt-${project.version}.jar"/>
                                     </fileset>
                                     <!--Private key JWT auth Handler-->
-                                    <fileset
-                                            dir="${basedir}/../../product-accelerators/apim/components/org.wso2.healthcare.apim.clientauth.jwt/target">
-                                        <include name="org.wso2.healthcare.apim.clientauth.jwt-${project.version}.jar"/>
-                                    </fileset>
+
+<!--                                    This module will be removed in future releases as WSO2 IS supports PKJWT auth flow.
+https://is.docs.wso2.com/en/latest/guides/authentication/oidc/private-key-jwt-client-auth/#implement-private-key-jwt-client-authentication-for-oidc-->
+
+<!--                                    <fileset-->
+<!--                                            dir="${basedir}/../../product-accelerators/apim/components/org.wso2.healthcare.apim.clientauth.jwt/target">-->
+<!--                                        <include name="org.wso2.healthcare.apim.clientauth.jwt-${project.version}.jar"/>-->
+<!--                                    </fileset>-->
+
                                     <!--Scope Mgt Jar-->
                                     <fileset
                                             dir="${basedir}/../../product-accelerators/apim/components/org.wso2.healthcare.apim.scopemgt/target">
